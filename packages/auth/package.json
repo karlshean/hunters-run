@@ -1,0 +1,8 @@
+{
+  "name": "@platform/auth",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": { "build": "tsc -p tsconfig.json" },
+  "dependencies": { "firebase-admin": "12.3.1", "@nestjs/common": "10.3.0" }
+}

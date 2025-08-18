@@ -1,0 +1,2 @@
+-- payments_extra.sql
+-- Reserved for future migrations

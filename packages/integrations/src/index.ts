@@ -1,0 +1,5 @@
+export type Health = { ok: boolean; provider: string; detail?: string };
+export interface EmailAdapter { send(p: {to:string|string[];from:string;subject?:string;html?:string;text?:string;templateId?:string;templateData?:any;}): Promise<{id:string}>; health(): Promise<Health>; }
+export interface FileAdapter { getSignedUploadUrl(p:{key:string;mime:string;expiresSec?:number;metadata?:Record<string,string>}): Promise<{url:string;key:string}>; getSignedDownloadUrl(p:{key:string;expiresSec?:number}): Promise<{url:string}>; health(): Promise<Health>; }
+export interface SmsAdapter { send(p:{to:string;body:string}): Promise<{id:string}>; health(): Promise<Health>; }
+export interface PaymentsAdapter { createCheckout(p:{successUrl:string;cancelUrl:string;lines:Array<{name:string;amountCents:number;quantity:number}>;}): Promise<{url:string;id:string}>; health(): Promise<Health>; }
