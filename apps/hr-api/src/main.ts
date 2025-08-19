@@ -11,6 +11,6 @@ async function bootstrap() {
   const port = process.env.PORT ? Number(process.env.PORT) : 3000;
   await app.listen(port);
   // eslint-disable-next-line no-console
-  console.log(\hr-api listening on http://localhost:\/api\);
+  console.log(`hr-api listening on http://localhost:${port}/api`);
 }
 bootstrap();

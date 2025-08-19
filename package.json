@@ -7,8 +7,9 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:hr": "npm run -w apps/hr-api dev",
+    "dev:hr": "npm run -w apps/hr-api start:dev",
     "build:hr": "npm run -w apps/hr-api build",
+    "start:hr": "npm run -w apps/hr-api start",
     "test": "echo ok"
   }
 }
