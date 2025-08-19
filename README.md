@@ -1,147 +1,83 @@
-# Hunters Run – Public Monorepo
+# Hunters Run – Property Management System
 
-- Node 20, Postgres 16, Redis 7
-- npm workspaces
-- Docker Compose for local DBs
-- API (apps/hr-api) with maintenance workflow, RLS, and audit chain
-- SQL migrations (packages/db/migrations)
+Complete maintenance and payments management with audit trails, RLS security, and Stripe integration.
 
-## Quick start
+**Tech Stack:** Node 20, Postgres 16, Redis 7, NestJS, React
+
+## How to Run
+
+### One-Command Setup
 ```bash
-cp .env.example .env   # fill later
-npm ci
-docker compose up -d
-npm run migrate
-npm run seed:local
-npm run dev:hr
-curl -i http://localhost:3000/api/ready
-```
-
-## Smoke Test
-
-Complete end-to-end verification of the maintenance workflow:
-
-### 1. Setup
-```bash
-docker compose up -d
+# Install dependencies
 npm install
-npm run migrate
-npm run seed:local
-npm run dev:hr
+
+# Start everything (API + Web UI)
+npm run dev:all
 ```
 
-### 2. Lookups (returns seeded entities)
-```bash
-ORG=00000000-0000-0000-0000-000000000001
+**That's it!** This will:
+- Start Docker containers (Postgres + Redis)
+- Run database migrations and seed data
+- Start API on **http://localhost:3000**
+- Start Web UI on **http://localhost:3001**
 
-# Get all lookup data
-curl -H "x-org-id: $ORG" http://localhost:3000/api/lookups/units | jq
-curl -H "x-org-id: $ORG" http://localhost:3000/api/lookups/tenants | jq
-curl -H "x-org-id: $ORG" http://localhost:3000/api/lookups/technicians | jq
-curl -H "x-org-id: $ORG" http://localhost:3000/api/lookups/properties | jq
+### Alternative: API Only
+```bash
+# Just the backend API
+npm run dev:stack
 ```
 
-### 3. Create Work Order
+### Manual Setup (if needed)
 ```bash
-curl -s -H "x-org-id: $ORG" -H "Content-Type: application/json" \
-  -d '{"unitId":"20000000-0000-0000-0000-000000000001","tenantId":"30000000-0000-0000-0000-000000000001","title":"Leaking sink","priority":"high"}' \
-  http://localhost:3000/api/maintenance/work-orders | jq
-
-# Save the work order ID for next steps
-WO_ID=$(curl -s -H "x-org-id: $ORG" -H "Content-Type: application/json" \
-  -d '{"unitId":"20000000-0000-0000-0000-000000000001","tenantId":"30000000-0000-0000-0000-000000000001","title":"Test WO","priority":"normal"}' \
-  http://localhost:3000/api/maintenance/work-orders | jq -r '.id')
-```
-
-### 4. Status Transitions (Valid Flow)
-```bash
-# new → triaged
-curl -s -X PATCH -H "x-org-id: $ORG" -H "Content-Type: application/json" \
-  -d '{"toStatus":"triaged"}' \
-  http://localhost:3000/api/maintenance/work-orders/$WO_ID/status | jq
-
-# triaged → assigned  
-curl -s -X PATCH -H "x-org-id: $ORG" -H "Content-Type: application/json" \
-  -d '{"toStatus":"assigned"}' \
-  http://localhost:3000/api/maintenance/work-orders/$WO_ID/status | jq
-
-# assigned → in_progress
-curl -s -X PATCH -H "x-org-id: $ORG" -H "Content-Type: application/json" \
-  -d '{"toStatus":"in_progress"}' \
-  http://localhost:3000/api/maintenance/work-orders/$WO_ID/status | jq
-```
-
-### 5. Illegal Status Transition (expect 422)
-```bash
-# Try to go directly from in_progress → closed (invalid)
-curl -s -X PATCH -H "x-org-id: $ORG" -H "Content-Type: application/json" \
-  -d '{"toStatus":"closed"}' \
-  http://localhost:3000/api/maintenance/work-orders/$WO_ID/status | jq
-```
-
-### 6. Audit Chain Validation
-```bash
-# Validate the audit chain (should return valid: true)
-curl -s -H "x-org-id: $ORG" \
-  http://localhost:3000/api/maintenance/work-orders/$WO_ID/audit/validate | jq
-```
-
-### 7. Negative Cases
-```bash
-# Missing org header (expect 403)
-curl -s http://localhost:3000/api/lookups/units | jq
-
-# Invalid org ID (expect 403)  
-curl -s -H "x-org-id: invalid-uuid" http://localhost:3000/api/lookups/units | jq
-
-# Non-existent work order (expect 404)
-curl -s -H "x-org-id: $ORG" \
-  http://localhost:3000/api/maintenance/work-orders/99999999-9999-9999-9999-999999999999 | jq
-
-# Invalid payload (expect 400)
-curl -s -H "x-org-id: $ORG" -H "Content-Type: application/json" \
-  -d '{"unitId":"invalid","priority":"invalid"}' \
-  http://localhost:3000/api/maintenance/work-orders | jq
-```
-
-### 8. Run E2E Tests
-```bash
-npm run test:hr:e2e
-```
-
-### Expected Results
-- ✅ All lookups return seeded data for valid org, empty arrays for unknown org
-- ✅ Work order creation succeeds with valid payload, fails with 400 for invalid
-- ✅ Status transitions follow state machine rules, illegal transitions return 422
-- ✅ Audit validation returns `{"valid": true, "eventsCount": N, "headHash": "..."}`
-- ✅ Negative cases return appropriate HTTP status codes (403, 404, 400, 422)
-- ✅ E2E tests pass completely
-
-## One-Button Verification
-
-Run complete Phase 2.5 verification suite:
-
-```bash
-# Full verification pipeline (matches CI)
-npm ci
+cp .env.example .env
+npm install
 docker compose up -d
 npm run migrate
 npm run seed:local
-npm run build:hr
-npm run test:hr -- --runInBand
-npm run test:hr:e2e
-npm run openapi:generate
-npm run dev:hr & sleep 5 && node scripts/smoke.js
+npm run dev:hr  # API only
 ```
 
-### Verification Scripts
-- `node scripts/smoke.js` - End-to-end workflow testing
-- `npm run test:rls` - RLS policy snapshot validation
-- `npm run openapi:generate` - Generate OpenAPI specification
-- `npm run test:hr:e2e` - Comprehensive negative case testing
+## Access Points
 
-### Artifacts Generated
-- `apps/hr-api/openapi.json` - API specification
-- `postman/hunters-run.postman_collection.json` - Complete API collection
-- `coverage/` - Test coverage reports
-- `reports/e2e.html` - E2E test results
+- **API**: http://localhost:3000/api/health
+- **Web UI**: http://localhost:3001 (minimal health checker)
+- **Full Demo**: Use the API endpoints or run scripts
+
+## Testing
+
+```bash
+# Quick smoke test (waits for API, tests endpoints)
+npm run smoke
+
+# Full test suite
+npm run test:hr
+npm run test:hr:e2e
+npm run test:payments:e2e
+```
+
+## Demo Scripts
+
+```bash
+# Test maintenance workflow
+node scripts/demo-workflow.js
+
+# Test payments flow
+bash scripts/demo-payments.sh
+```
+
+## Features
+
+- **Work Orders**: Create, assign, track maintenance requests
+- **Payments**: Stripe integration with oldest-first allocation
+- **Audit Trail**: Cryptographic hash chain for compliance
+- **Multi-Tenant**: RLS policies for organization isolation
+- **Real-time**: WebSocket updates and status changes
+
+## Port Reference
+
+- **3000**: API backend (all /api/* endpoints)
+- **3001**: Web UI (minimal health checker)
+- **5432**: PostgreSQL database
+- **6379**: Redis cache
+
+Avoid port confusion: the API is always on 3000, web UI is on 3001.

@@ -7,6 +7,29 @@ const BASE_URL = 'http://localhost:3000';
 
 let failures = 0;
 
+// Wait for API to be ready with timeout
+async function waitForApi(timeout = 60000) {
+  const start = Date.now();
+  
+  while (Date.now() - start < timeout) {
+    try {
+      const result = await makeRequest('GET', '/api/ready');
+      if (result.status === 200) {
+        console.log('✅ API is ready');
+        return true;
+      }
+    } catch (error) {
+      // API not ready yet, continue waiting
+    }
+    
+    process.stdout.write('.');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  
+  console.log('\n❌ API did not become ready within timeout');
+  return false;
+}
+
 function makeRequest(method, path, data = null, headers = {}) {
   return new Promise((resolve, reject) => {
     const options = {
@@ -204,6 +227,15 @@ async function testAuditValidation(workOrderId) {
 async function runSmokeTests() {
   console.log('🚀 Running smoke tests...\n');
 
+  // Wait for API to be ready
+  console.log('⏳ Waiting for API to be ready...');
+  const apiReady = await waitForApi();
+  if (!apiReady) {
+    console.log('❌ API not ready - aborting smoke tests');
+    process.exit(1);
+  }
+
+  console.log('');
   await testHealthEndpoints();
   console.log('');
   
@@ -225,5 +257,4 @@ async function runSmokeTests() {
   }
 }
 
-// Wait a moment for server to be ready
-setTimeout(runSmokeTests, 2000);
+runSmokeTests();

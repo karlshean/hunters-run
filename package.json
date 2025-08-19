@@ -6,6 +6,9 @@
     "apps/*",
     "packages/*"
   ],
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
   "scripts": {
     "dev:hr": "npm run -w apps/hr-api start:dev",
     "build:hr": "npm run -w apps/hr-api build",
@@ -17,6 +20,9 @@
     "migrate:reset": "node packages/db/migrate.js --reset",
     "seed:local": "psql \"$DATABASE_URL\" -f packages/db/seeds/seed_local.sql && psql \"$DATABASE_URL\" -f packages/db/seeds/seed_payments.sql",
     "openapi:generate": "npx ts-node scripts/generate-openapi.ts",
+    "dev:stack": "docker compose up -d && npm run dev:hr",
+    "dev:all": "docker compose up -d && concurrently -n api,web -c auto \"npm run dev:hr\" \"npm --workspace apps/hr-web run dev\"",
+    "smoke": "node scripts/smoke.js",
     "test": "echo ok",
     "dev:web": "npm run -w apps/hr-web dev",
     "build:web": "npm run -w apps/hr-web build",
