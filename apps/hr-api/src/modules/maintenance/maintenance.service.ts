@@ -132,6 +132,86 @@ export class MaintenanceService {
     });
   }
 
+  async assignTechnician(orgId: string, workOrderId: string, dto: AssignTechnicianDto): Promise<WorkOrder> {
+    return this.db.executeWithOrgContext(orgId, async (client) => {
+      // Verify technician exists
+      const techCheck = await client.query('SELECT id FROM hr.technicians WHERE id = $1', [dto.technicianId]);
+      if (techCheck.rows.length === 0) {
+        throw new NotFoundException('Technician not found');
+      }
+
+      // Update work order
+      const result = await client.query(`
+        UPDATE hr.work_orders 
+        SET assigned_tech_id = $1, updated_at = NOW()
+        WHERE id = $2
+        RETURNING id, unit_id as "unitId", tenant_id as "tenantId", title, description, priority, status,
+                  assigned_tech_id as "assignedTechId", created_at as "createdAt", updated_at as "updatedAt"
+      `, [dto.technicianId, workOrderId]);
+
+      if (result.rows.length === 0) {
+        throw new NotFoundException('Work order not found');
+      }
+
+      // Create audit event
+      await client.query(`
+        SELECT hr.create_audit_event($1, 'assign_technician', 'work_order', $2, $3)
+      `, [
+        orgId,
+        workOrderId,
+        JSON.stringify({ technicianId: dto.technicianId })
+      ]);
+
+      return result.rows[0];
+    });
+  }
+
+  async attachEvidence(orgId: string, workOrderId: string, dto: AttachEvidenceDto): Promise<{ message: string; evidenceId: string }> {
+    return this.db.executeWithOrgContext(orgId, async (client) => {
+      // Verify work order exists
+      const woCheck = await client.query('SELECT id FROM hr.work_orders WHERE id = $1', [workOrderId]);
+      if (woCheck.rows.length === 0) {
+        throw new NotFoundException('Work order not found');
+      }
+
+      // Insert evidence record (stub - no real file storage)
+      const evidenceId = require('crypto').randomUUID();
+      await client.query(`
+        INSERT INTO hr.work_order_evidence (id, organization_id, work_order_id, file_key, file_name, 
+                                           mime_type, file_size, sha256_hash, taken_at, created_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+      `, [
+        evidenceId,
+        orgId, 
+        workOrderId,
+        dto.key,
+        dto.key.split('/').pop(), // filename from key
+        dto.mime,
+        1024, // placeholder size
+        dto.sha256,
+        dto.takenAt
+      ]);
+
+      // Create audit event
+      await client.query(`
+        SELECT hr.create_audit_event($1, 'attach_evidence', 'work_order', $2, $3)
+      `, [
+        orgId,
+        workOrderId,
+        JSON.stringify({ 
+          evidenceId: evidenceId,
+          fileKey: dto.key,
+          sha256: dto.sha256
+        })
+      ]);
+
+      return { 
+        message: 'Evidence attached successfully',
+        evidenceId: evidenceId
+      };
+    });
+  }
+
   async validateAuditChain(orgId: string, workOrderId: string): Promise<{ valid: boolean; eventsCount: number; headHash: string }> {
     return this.db.executeWithOrgContext(orgId, async (client) => {
       const result = await client.query(`

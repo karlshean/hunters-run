@@ -38,6 +38,16 @@ export class MaintenanceController {
     return this.maintenanceService.changeStatus(req.orgId, id, dto);
   }
 
+  @Post('work-orders/:id/assign')
+  async assignTechnician(@Req() req: any, @Param('id') id: string, @Body() dto: AssignTechnicianDto) {
+    return this.maintenanceService.assignTechnician(req.orgId, id, dto);
+  }
+
+  @Post('work-orders/:id/evidence')
+  async attachEvidence(@Req() req: any, @Param('id') id: string, @Body() dto: AttachEvidenceDto) {
+    return this.maintenanceService.attachEvidence(req.orgId, id, dto);
+  }
+
   @Get('work-orders/:id/audit/validate')
   async validateAudit(@Req() req: any, @Param('id') id: string) {
     return this.maintenanceService.validateAuditChain(req.orgId, id);
