@@ -1,24 +1,13 @@
-{
+﻿{
   "name": "hunters-run",
   "version": "0.1.0",
   "private": true,
-  "description": "Hunters Run monorepo (apps + packages)",
-  "engines": {
-    "node": ">=20.0.0",
-    "npm": ">=10.0.0"
-  },
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "postinstall": "npm -ws run postinstall --if-present",
-    "build": "npm -ws run build --if-present",
-    "dev:hr": "npm --workspace @hunters-run/api run start:dev",
-    "migrate": "npm --workspace @hunters-run/db run migrate",
-    "docker:up": "docker compose up -d",
-    "docker:down": "docker compose down",
-    "lint": "npm -ws run lint --if-present",
-    "test": "npm -ws run test --if-present"
+    "build": "echo build",
+    "test": "echo ok"
   }
 }

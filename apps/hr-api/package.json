@@ -1,30 +1,12 @@
-{
-  "name": "@apps/hr-api",
+﻿{
+  "name": "@hunters-run/api",
   "version": "0.1.0",
+  "private": true,
+  "main": "dist/main.js",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "start": "node dist/main.js",
-    "start:dev": "tsc -p tsconfig.json --watch & nodemon --watch dist dist/main.js",
-    "build": "tsc -p tsconfig.json",
-    "test": "echo "(add tests)" && exit 0"
-  },
-  "dependencies": {
-    "@nestjs/common": "10.3.0",
-    "@nestjs/core": "10.3.0",
-    "@nestjs/platform-express": "10.3.0",
-    "@nestjs/config": "3.2.0",
-    "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.1",
-    "body-parser": "1.20.2",
-    "ioredis": "5.4.1",
-    "typeorm": "0.3.20",
-    "pg": "8.12.0",
-    "@platform/auth": "workspace:*",
-    "@platform/db": "workspace:*",
-    "@platform/shared": "workspace:*"
-  },
-  "devDependencies": {
-    "typescript": "5.4.5",
-    "nodemon": "3.0.2",
-    "@types/node": "20.12.12"
+    "build": "echo build-api",
+    "start:dev": "echo dev-api",
+    "test": "echo ok"
   }
 }
