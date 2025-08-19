@@ -9,6 +9,8 @@
   "scripts": {
     "dev:hr": "npm run -w apps/hr-api dev",
     "build:hr": "npm run -w apps/hr-api build",
+    "migrate": "npm run -w packages/db migrate",
+    "migrate:reset": "npm run -w packages/db migrate:reset",
     "test": "echo ok"
   }
 }
