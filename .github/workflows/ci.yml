@@ -83,6 +83,15 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
           REDIS_URL: redis://localhost:6379
 
+      - name: Run payments e2e tests
+        run: npm run test:payments:e2e
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
+          REDIS_URL: redis://localhost:6379
+          STRIPE_SECRET_KEY: sk_test_fake_key_for_testing
+          STRIPE_WEBHOOK_SECRET: whsec_fake_secret_for_testing
+          ALLOW_INSECURE_STRIPE_WEBHOOK_TEST: true
+
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v3
         if: always()
