@@ -17,6 +17,9 @@
     "migrate:reset": "node packages/db/migrate.js --reset",
     "seed:local": "psql \"$DATABASE_URL\" -f packages/db/seeds/seed_local.sql && psql \"$DATABASE_URL\" -f packages/db/seeds/seed_payments.sql",
     "openapi:generate": "npx ts-node scripts/generate-openapi.ts",
-    "test": "echo ok"
+    "test": "echo ok",
+    "dev:web": "npm run -w apps/hr-web dev",
+    "build:web": "npm run -w apps/hr-web build",
+    "test:web:e2e": "npm run -w apps/hr-web test:e2e"
   }
 }
