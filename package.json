@@ -7,10 +7,13 @@
     "packages/*"
   ],
   "scripts": {
-    "dev:hr": "npm run -w apps/hr-api dev",
+    "dev:hr": "npm run -w apps/hr-api start:dev",
     "build:hr": "npm run -w apps/hr-api build",
-    "migrate": "npm run -w packages/db migrate",
-    "migrate:reset": "npm run -w packages/db migrate:reset",
+    "test:hr": "npm run -w apps/hr-api test",
+    "test:hr:e2e": "npm run -w apps/hr-api test:e2e",
+    "migrate": "node packages/db/migrate.js",
+    "migrate:reset": "node packages/db/migrate.js --reset",
+    "seed:local": "psql \"$DATABASE_URL\" -f packages/db/seeds/seed_local.sql",
     "test": "echo ok"
   }
 }
