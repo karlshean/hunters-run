@@ -1,10 +1,16 @@
 name: CI
+
 on:
-  push: { branches: [ main ] }
+  push:
+    branches: [ main, feat/*, chore/* ]
   pull_request:
+    branches: [ main ]
+
 jobs:
-  build-test:
+  test:
+    name: Test & Verify
     runs-on: ubuntu-latest
+    
     services:
       postgres:
         image: postgres:16
@@ -12,18 +18,95 @@ jobs:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: unified
-        ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s --health-timeout 3s --health-retries 20
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
       redis:
         image: redis:7
-        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '20', cache: 'npm' }
-      - run: npm ci
-      - run: npm -w @hunters-run/integrations run build || true
-      - run: npm run migrate
-      - run: npm test
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Wait for services to be ready
+        run: |
+          timeout 30 bash -c 'until pg_isready -h localhost -p 5432 -U postgres; do sleep 1; done'
+          timeout 30 bash -c 'until redis-cli -h localhost -p 6379 ping | grep -q PONG; do sleep 1; done'
+
+      - name: Run migrations and seed data
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
+          REDIS_URL: redis://localhost:6379
+        run: |
+          npm run migrate
+          npm run seed:local
+
+      - name: Build API
+        run: npm run build:hr
+
+      - name: Run unit tests
+        run: npm run test:hr -- --runInBand
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
+          REDIS_URL: redis://localhost:6379
+
+      - name: Generate OpenAPI spec
+        run: npm run openapi:generate
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
+          REDIS_URL: redis://localhost:6379
+
+      - name: Run smoke tests
+        run: node scripts/smoke.js
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
+          REDIS_URL: redis://localhost:6379
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+
+      - name: Upload OpenAPI spec
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: openapi
+          path: apps/hr-api/openapi.json
+
+      - name: Upload Postman collection
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: postman
+          path: postman/hunters-run.postman_collection.json
+
+      - name: Upload e2e report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: e2e-report
+          path: reports/e2e.html

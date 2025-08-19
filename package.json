@@ -11,9 +11,11 @@
     "build:hr": "npm run -w apps/hr-api build",
     "test:hr": "npm run -w apps/hr-api test",
     "test:hr:e2e": "npm run -w apps/hr-api test:e2e",
+    "test:rls": "npm run -w apps/hr-api test -- --testPathPattern=rls.snapshot.spec.ts",
     "migrate": "node packages/db/migrate.js",
     "migrate:reset": "node packages/db/migrate.js --reset",
     "seed:local": "psql \"$DATABASE_URL\" -f packages/db/seeds/seed_local.sql",
+    "openapi:generate": "npx ts-node scripts/generate-openapi.ts",
     "test": "echo ok"
   }
 }

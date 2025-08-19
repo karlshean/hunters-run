@@ -116,3 +116,32 @@ npm run test:hr:e2e
 - ✅ Audit validation returns `{"valid": true, "eventsCount": N, "headHash": "..."}`
 - ✅ Negative cases return appropriate HTTP status codes (403, 404, 400, 422)
 - ✅ E2E tests pass completely
+
+## One-Button Verification
+
+Run complete Phase 2.5 verification suite:
+
+```bash
+# Full verification pipeline (matches CI)
+npm ci
+docker compose up -d
+npm run migrate
+npm run seed:local
+npm run build:hr
+npm run test:hr -- --runInBand
+npm run test:hr:e2e
+npm run openapi:generate
+npm run dev:hr & sleep 5 && node scripts/smoke.js
+```
+
+### Verification Scripts
+- `node scripts/smoke.js` - End-to-end workflow testing
+- `npm run test:rls` - RLS policy snapshot validation
+- `npm run openapi:generate` - Generate OpenAPI specification
+- `npm run test:hr:e2e` - Comprehensive negative case testing
+
+### Artifacts Generated
+- `apps/hr-api/openapi.json` - API specification
+- `postman/hunters-run.postman_collection.json` - Complete API collection
+- `coverage/` - Test coverage reports
+- `reports/e2e.html` - E2E test results

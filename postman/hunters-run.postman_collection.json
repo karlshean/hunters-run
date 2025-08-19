@@ -1,0 +1,384 @@
+{
+	"info": {
+		"_postman_id": "hunters-run-api",
+		"name": "Hunters Run API",
+		"description": "Maintenance management API with RLS and audit chain",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "org_id",
+			"value": "00000000-0000-0000-0000-000000000001",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/health",
+							"host": ["{{base_url}}"],
+							"path": ["api", "health"]
+						}
+					}
+				},
+				{
+					"name": "Ready Check",
+					"request": {
+						"method": "GET", 
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/ready",
+							"host": ["{{base_url}}"],
+							"path": ["api", "ready"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Lookups",
+			"item": [
+				{
+					"name": "Get Units",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-org-id",
+								"value": "{{org_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/lookups/units",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lookups", "units"]
+						}
+					}
+				},
+				{
+					"name": "Get Tenants",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-org-id",
+								"value": "{{org_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/lookups/tenants",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lookups", "tenants"]
+						}
+					}
+				},
+				{
+					"name": "Get Technicians",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-org-id",
+								"value": "{{org_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/lookups/technicians",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lookups", "technicians"]
+						}
+					}
+				},
+				{
+					"name": "Get Properties",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-org-id",
+								"value": "{{org_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/lookups/properties",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lookups", "properties"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Work Orders",
+			"item": [
+				{
+					"name": "Create Work Order",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-org-id",
+								"value": "{{org_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"unitId\": \"20000000-0000-0000-0000-000000000001\",\n  \"tenantId\": \"30000000-0000-0000-0000-000000000001\",\n  \"title\": \"Leaking kitchen faucet\",\n  \"description\": \"Water dripping from kitchen faucet\",\n  \"priority\": \"high\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/maintenance/work-orders",
+							"host": ["{{base_url}}"],
+							"path": ["api", "maintenance", "work-orders"]
+						}
+					}
+				},
+				{
+					"name": "Get Work Order",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-org-id",
+								"value": "{{org_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/maintenance/work-orders/:id",
+							"host": ["{{base_url}}"],
+							"path": ["api", "maintenance", "work-orders", ":id"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{work_order_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Change Status to Triaged",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "x-org-id",
+								"value": "{{org_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"toStatus\": \"triaged\",\n  \"note\": \"Work order reviewed and triaged\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/maintenance/work-orders/:id/status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "maintenance", "work-orders", ":id", "status"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{work_order_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Change Status to Assigned",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "x-org-id",
+								"value": "{{org_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"toStatus\": \"assigned\",\n  \"note\": \"Assigned to technician\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/maintenance/work-orders/:id/status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "maintenance", "work-orders", ":id", "status"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{work_order_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Change Status to In Progress",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "x-org-id",
+								"value": "{{org_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"toStatus\": \"in_progress\",\n  \"note\": \"Work started\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/maintenance/work-orders/:id/status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "maintenance", "work-orders", ":id", "status"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{work_order_id}}"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Validate Audit Chain",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "x-org-id",
+								"value": "{{org_id}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/maintenance/work-orders/:id/audit/validate",
+							"host": ["{{base_url}}"],
+							"path": ["api", "maintenance", "work-orders", ":id", "audit", "validate"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "{{work_order_id}}"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Negative Cases",
+			"item": [
+				{
+					"name": "Missing Org Header (403)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/lookups/units",
+							"host": ["{{base_url}}"],
+							"path": ["api", "lookups", "units"]
+						}
+					}
+				},
+				{
+					"name": "Invalid Work Order Data (400)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "x-org-id",
+								"value": "{{org_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"unitId\": \"invalid-uuid\",\n  \"title\": \"\",\n  \"priority\": \"invalid\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/maintenance/work-orders",
+							"host": ["{{base_url}}"],
+							"path": ["api", "maintenance", "work-orders"]
+						}
+					}
+				},
+				{
+					"name": "Illegal Status Transition (422)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "x-org-id",
+								"value": "{{org_id}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"toStatus\": \"completed\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/maintenance/work-orders/:id/status",
+							"host": ["{{base_url}}"],
+							"path": ["api", "maintenance", "work-orders", ":id", "status"],
+							"variable": [
+								{
+									"key": "id",
+									"value": "50000000-0000-0000-0000-000000000001"
+								}
+							]
+						}
+					}
+				}
+			]
+		}
+	]
+}
