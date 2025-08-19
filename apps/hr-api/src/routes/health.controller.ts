@@ -1,15 +1,35 @@
-import { Controller, Get, Req } from "@nestjs/common";
-import { AppDataSource } from "@platform/db/src/datasource";
+﻿import { Controller, Get } from '@nestjs/common';
+import Redis from 'ioredis';
+import { Client } from 'pg';
 
-@Controller()
+@Controller('health')
 export class HealthController {
-  @Get("api/health")
-  health() { return { ok: true, service: "hr-api" }; }
+  @Get()
+  ok() {
+    return { ok: true, service: 'hr-api' };
+  }
 
-  @Get("api/ready")
-  async ready(@Req() req: any) {
-    try { await AppDataSource.query("select 1"); } catch { return { ok:false, db:false, redis:false, error:"db_failed" }; }
-    try { await req.app.locals.redis.ping(); } catch { return { ok:false, db:true, redis:false, error:"redis_failed" }; }
-    return { ok:true, db:true, redis:true };
+  @Get('ready')
+  async ready() {
+    const dbUrl = process.env.DATABASE_URL!;
+    const redisUrl = process.env.REDIS_URL!;
+
+    // Postgres check
+    const pg = new Client({ connectionString: dbUrl });
+    await pg.connect();
+    const db = await pg.query('SELECT 1 as ok');
+    await pg.end();
+
+    // Redis check
+    const redis = new Redis(redisUrl, { lazyConnect: true });
+    await redis.connect();
+    const pong = await redis.ping();
+    await redis.quit();
+
+    return {
+      db: db.rows[0]?.ok === 1,
+      redis: pong === 'PONG',
+      ok: db.rows[0]?.ok === 1 && pong === 'PONG',
+    };
   }
 }

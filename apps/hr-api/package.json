@@ -1,12 +1,13 @@
 ﻿{
-  "name": "@hunters-run/api",
+  "name": "@hunters-run/hr-api",
   "version": "0.1.0",
   "private": true,
   "main": "dist/main.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "echo build-api",
-    "start:dev": "echo dev-api",
+    "dev": "node -e \"console.log('hr-api dev placeholder: OK')\"",
+    "build": "node -e \"console.log('hr-api build placeholder: OK')\"",
+    "start": "node -e \"console.log('hr-api start placeholder: OK')\"",
     "test": "echo ok"
   }
 }
