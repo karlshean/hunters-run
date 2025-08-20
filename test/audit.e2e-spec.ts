@@ -321,6 +321,199 @@ describe('Audit E2E Tests', () => {
     });
   });
 
+  describe('Demo Organization CEO Validation', () => {
+    const demoOrgId = '00000000-0000-4000-8000-000000000001';
+    const testIsolationOrgId = '99999999-9999-9999-9999-999999999999';
+
+    it('should provide valid audit chain for demo organization', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/audit/verify')
+        .set('x-org-id', demoOrgId)
+        .expect(200);
+
+      expect(response.body.valid).toBe(true);
+      expect(response.body.totalEvents).toBe(3);
+      expect(response.body.firstBadEvent).toBeUndefined();
+    });
+
+    it('should provide demo entity audit trail with valid cryptographic hashes', async () => {
+      const testWorkOrderId = 'wo-demo-test';
+      
+      const response = await request(app.getHttpServer())
+        .get(`/api/audit/entity/work_order/${testWorkOrderId}`)
+        .set('x-org-id', demoOrgId)
+        .expect(200);
+
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body).toHaveLength(3);
+
+      // Verify audit event structure
+      const events = response.body;
+      expect(events[0].action).toBe('work_order.created');
+      expect(events[1].action).toBe('work_order.status_updated');
+      expect(events[2].action).toBe('work_order.assigned');
+
+      // Verify cryptographic hash chain
+      events.forEach(event => {
+        expect(event).toHaveProperty('hash_hex');
+        expect(event.hash_hex).toMatch(/^[0-9a-f]{64}$/i); // SHA256 hex format
+      });
+
+      // Verify hash chain links
+      expect(events[0].prev_hash_hex).toBeNull(); // First event has no previous
+      expect(events[1].prev_hash_hex).toBe(events[0].hash_hex);
+      expect(events[2].prev_hash_hex).toBe(events[1].hash_hex);
+    });
+
+    it('should support work order operations for demo organization', async () => {
+      // Test work order creation
+      const createResponse = await request(app.getHttpServer())
+        .post('/api/maintenance/work-orders')
+        .set('x-org-id', demoOrgId)
+        .send({
+          title: 'Demo Test Work Order',
+          description: 'Testing demo stub functionality',
+          priority: 'high',
+          unitId: '00000000-0000-4000-8000-000000000003',
+          tenantId: '00000000-0000-4000-8000-000000000004'
+        })
+        .expect(201);
+
+      const workOrderId = createResponse.body.id;
+      expect(createResponse.body.ticketId).toMatch(/^WO-\d{4}-\d{4}$/);
+
+      // Test status update
+      await request(app.getHttpServer())
+        .patch(`/api/maintenance/work-orders/${workOrderId}/status`)
+        .set('x-org-id', demoOrgId)
+        .send({
+          toStatus: 'triaged',
+          note: 'Demo status update'
+        })
+        .expect(200);
+
+      // Test technician assignment
+      await request(app.getHttpServer())
+        .post(`/api/maintenance/work-orders/${workOrderId}/assign`)
+        .set('x-org-id', demoOrgId)
+        .send({
+          technicianId: '00000000-0000-4000-8000-000000000005'
+        })
+        .expect(200);
+
+      // Test evidence attachment
+      const evidenceResponse = await request(app.getHttpServer())
+        .post(`/api/maintenance/work-orders/${workOrderId}/evidence`)
+        .set('x-org-id', demoOrgId)
+        .send({
+          key: 'evidence/demo-test.jpg',
+          mime: 'image/jpeg',
+          sha256: 'abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234',
+          takenAt: new Date().toISOString()
+        })
+        .expect(201);
+
+      expect(evidenceResponse.body.message).toBe('Evidence attached successfully');
+      expect(evidenceResponse.body.evidenceId).toMatch(/^evidence-/);
+    });
+
+    it('should enforce organizational isolation for test UUID', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/audit/verify')
+        .set('x-org-id', testIsolationOrgId)
+        .expect(200);
+
+      expect(response.body.valid).toBe(true);
+      expect(response.body.totalEvents).toBe(0); // Foreign org should see no events
+    });
+
+    it('should validate complete CEO audit immutability scenario', async () => {
+      // This test replicates the key parts of the CEO validation script
+      
+      // 1. Create work order
+      const createResponse = await request(app.getHttpServer())
+        .post('/api/maintenance/work-orders')
+        .set('x-org-id', demoOrgId)
+        .send({
+          title: 'CEO Validation Test',
+          description: 'Comprehensive CEO audit test',
+          priority: 'high',
+          unitId: '00000000-0000-4000-8000-000000000003',
+          tenantId: '00000000-0000-4000-8000-000000000004'
+        })
+        .expect(201);
+
+      const workOrderId = createResponse.body.id;
+
+      // 2. Update status
+      await request(app.getHttpServer())
+        .patch(`/api/maintenance/work-orders/${workOrderId}/status`)
+        .set('x-org-id', demoOrgId)
+        .send({ toStatus: 'triaged', note: 'CEO validation test' })
+        .expect(200);
+
+      // 3. Assign technician
+      await request(app.getHttpServer())
+        .post(`/api/maintenance/work-orders/${workOrderId}/assign`)
+        .set('x-org-id', demoOrgId)
+        .send({ technicianId: '00000000-0000-4000-8000-000000000005' })
+        .expect(200);
+
+      // 4. Verify global audit chain
+      const globalAudit = await request(app.getHttpServer())
+        .get('/api/audit/verify')
+        .set('x-org-id', demoOrgId)
+        .expect(200);
+
+      expect(globalAudit.body.valid).toBe(true);
+      expect(globalAudit.body.totalEvents).toBeGreaterThan(0);
+
+      // 5. Verify entity audit trail contains all expected events
+      const entityAudit = await request(app.getHttpServer())
+        .get(`/api/audit/entity/work_order/${workOrderId}`)
+        .set('x-org-id', demoOrgId)
+        .expect(200);
+
+      const actions = entityAudit.body.map(e => e.action);
+      expect(actions).toContain('work_order.created');
+      expect(actions).toContain('work_order.status_updated');
+      expect(actions).toContain('work_order.assigned');
+
+      // 6. Verify cryptographic hashes exist
+      entityAudit.body.forEach(event => {
+        expect(event.hash_hex).toMatch(/^[0-9a-f]{64}$/i);
+      });
+
+      // 7. Test organizational isolation
+      const isolationTest = await request(app.getHttpServer())
+        .get('/api/audit/verify')
+        .set('x-org-id', testIsolationOrgId)
+        .expect(200);
+
+      expect(isolationTest.body.totalEvents).toBe(0);
+
+      // 8. Attach evidence
+      await request(app.getHttpServer())
+        .post(`/api/maintenance/work-orders/${workOrderId}/evidence`)
+        .set('x-org-id', demoOrgId)
+        .send({
+          key: 'evidence/ceo-test-photo.jpg',
+          mime: 'image/jpeg',
+          sha256: 'abcd1234567890abcd1234567890abcd1234567890abcd1234567890abcd1234',
+          takenAt: new Date().toISOString()
+        })
+        .expect(201);
+
+      // 9. Final verification
+      const finalVerification = await request(app.getHttpServer())
+        .get('/api/audit/verify')
+        .set('x-org-id', demoOrgId)
+        .expect(200);
+
+      expect(finalVerification.body.valid).toBe(true);
+    });
+  });
+
   describe('Error Handling', () => {
     it('should handle missing org-id header gracefully', async () => {
       await request(app.getHttpServer())

@@ -32,4 +32,5 @@ export class AuditController {
   ) {
     return this.auditService.getEntityAuditTrail(req.orgId, entity, entityId);
   }
+
 }

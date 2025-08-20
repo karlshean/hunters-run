@@ -1,10 +1,16 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { TenantView } from './components/TenantView';
+import { TenantReport } from './components/TenantReport';
 import { ManagerView } from './components/ManagerView';
+import { useFlags } from './lib/useFlags';
 import './styles.css';
 
 function HealthCheck() {
+  const flags = useFlags();
+  
+  if (!flags) return null; // Loading flags
+  
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold text-gray-900 mb-4">Hunters Run Web</h1>
@@ -31,6 +37,18 @@ function HealthCheck() {
           >
             Manager Dashboard
           </a>
+          {flags.photoFlowEnabled ? (
+            <a 
+              href="/tenant/report" 
+              className="inline-block bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+            >
+              Report with Photo
+            </a>
+          ) : (
+            <span style={{opacity: 0.6}} className="inline-block bg-gray-400 text-white px-4 py-2 rounded cursor-not-allowed">
+              Report with Photo (coming soon)
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -44,6 +62,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HealthCheck />} />
           <Route path="/tenant" element={<TenantView />} />
+          <Route path="/tenant/report" element={<TenantReport />} />
           <Route path="/manager" element={<ManagerView />} />
           <Route path="/tech" element={<ManagerView />} />
           <Route path="*" element={<Navigate to="/" replace />} />

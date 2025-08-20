@@ -21,6 +21,7 @@ export class RLSInterceptor implements NestInterceptor {
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(orgId)) {
+      console.log(`RLS Interceptor: Invalid UUID format: ${orgId}, regex test result: ${uuidRegex.test(orgId)}`);
       throw new ForbiddenException('Invalid organization ID format');
     }
 
