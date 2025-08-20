@@ -1,0 +1,140 @@
+name: Supabase CI
+
+on:
+  push:
+    branches: [ infra/move-to-supabase ]
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'packages/db/migrations/**'
+      - 'packages/db/seeds/seed_supabase.sql'
+      - '.github/workflows/supabase-ci.yml'
+
+jobs:
+  supabase-test:
+    name: Test Supabase Migration
+    runs-on: ubuntu-latest
+    
+    # Note: This workflow requires Supabase credentials to be set as repository secrets
+    # SUPABASE_DB_URL: Full Supabase database connection string with password
+    
+    env:
+      DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+      REDIS_URL: redis://localhost:6379
+    
+    services:
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Validate Supabase connection
+        run: |
+          if [[ -z "$DATABASE_URL" ]]; then
+            echo "❌ SUPABASE_DB_URL secret not configured"
+            echo "Please add your Supabase database URL as a repository secret"
+            exit 1
+          fi
+          
+          # Test connection (mask password in logs)
+          echo "Testing Supabase connection..."
+          psql "$DATABASE_URL" -c "SELECT version();" || {
+            echo "❌ Failed to connect to Supabase database"
+            exit 1
+          }
+          echo "✅ Supabase connection successful"
+
+      - name: Run Supabase migrations
+        run: npm run migrate:supabase
+
+      - name: Seed Supabase with demo data
+        run: npm run seed:supabase
+
+      - name: Validate schema and RLS policies
+        run: |
+          echo "Validating schema structure..."
+          psql "$DATABASE_URL" -c "\dt hr.*" | grep -E "(organizations|properties|units|tenants|technicians|work_orders|audit_events|migrations)" || {
+            echo "❌ Required tables not found"
+            exit 1
+          }
+          
+          echo "Validating RLS policies..."
+          psql "$DATABASE_URL" -c "SELECT schemaname, tablename, policyname FROM pg_policies WHERE schemaname = 'hr';" | grep -q "." || {
+            echo "❌ No RLS policies found"
+            exit 1
+          }
+          
+          echo "✅ Schema and RLS validation passed"
+
+      - name: Start API server against Supabase
+        run: |
+          npm run dev:hr &
+          sleep 15  # Wait for API to be ready
+          
+          # Test API health
+          curl -f http://localhost:3000/api/health || {
+            echo "❌ API failed to start against Supabase"
+            exit 1
+          }
+          echo "✅ API started successfully against Supabase"
+
+      - name: Run basic API tests
+        run: |
+          # Test flags endpoint (should work without auth)
+          curl -f http://localhost:3000/api/flags || exit 1
+          echo "✅ Flags endpoint OK"
+          
+          # Test work orders endpoint with org header
+          curl -f -H "x-org-id: 00000000-0000-4000-8000-000000000001" \
+               http://localhost:3000/api/maintenance/work-orders || exit 1
+          echo "✅ Work orders endpoint OK"
+
+      - name: Validate CEO requirements
+        run: |
+          # CEO validation should work against Supabase
+          timeout 60 npm run ceo:validate:sh || {
+            echo "❌ CEO validation failed against Supabase"
+            exit 1
+          }
+          echo "✅ CEO validation passed against Supabase"
+
+      - name: Test feature flags
+        run: |
+          # Test photo feature flag behavior
+          TENANT_PHOTO_FLOW_ENABLED=false npm run dev:hr &
+          sleep 10
+          
+          # Flags endpoint should return photoFlowEnabled: false
+          response=$(curl -s http://localhost:3000/api/flags)
+          echo "$response" | grep -q '"photoFlowEnabled":false' || {
+            echo "❌ Photo feature flag not working correctly"
+            exit 1
+          }
+          echo "✅ Feature flags working correctly"
+
+      - name: Cleanup test data
+        if: always()
+        run: |
+          # Optional: Clean up any test data created during CI
+          echo "Supabase CI test completed"

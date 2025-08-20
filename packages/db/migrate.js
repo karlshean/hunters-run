@@ -5,8 +5,14 @@ const fs = require('fs');
 const path = require('path');
 
 // Configuration
-const DATABASE_URL = process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/unified';
+const DEFAULT_DATABASE_URL = 'postgres://postgres:postgres@localhost:5432/unified';
+const DATABASE_URL = process.env.DATABASE_URL || DEFAULT_DATABASE_URL;
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
+
+// Parse command line arguments
+const args = process.argv.slice(2);
+const urlArg = args.find(arg => arg.startsWith('--url='));
+const finalUrl = urlArg ? urlArg.replace('--url=', '') : DATABASE_URL;
 
 async function createMigrationsTable(client) {
     await client.query(`
@@ -58,35 +64,48 @@ async function resetDatabase(client) {
 }
 
 async function runMigrations() {
-    // Try different connection methods for Windows Docker
     let client;
     let connected = false;
     
-    // Method 1: Docker exec (most reliable for Windows)
-    try {
-        const { execSync } = require('child_process');
-        execSync('docker exec hunters-run-postgres-1 psql -U postgres -d unified -c "SELECT 1"', { stdio: 'pipe' });
-        console.log('📊 Docker connection verified');
-        // Use regular connection now that we know Docker works
-        client = new Client({ 
-            host: 'localhost',
-            port: 5432,
-            database: 'unified',
-            user: 'postgres'
-            // No password for Docker postgres
-        });
-        await client.connect();
-        connected = true;
-        console.log('📊 Connected to database via Docker');
-    } catch (error) {
-        console.log('Docker connection failed, trying connection string...');
-        if (client) await client.end().catch(() => {});
+    // Check if we're using a non-local URL (Supabase or other managed service)
+    const isLocalDocker = finalUrl === DEFAULT_DATABASE_URL;
+    
+    if (isLocalDocker) {
+        // Method 1: Docker exec (most reliable for Windows local development)
+        try {
+            const { execSync } = require('child_process');
+            execSync('docker exec hunters-run-postgres-1 psql -U postgres -d unified -c "SELECT 1"', { stdio: 'pipe' });
+            console.log('📊 Docker connection verified');
+            // Use regular connection now that we know Docker works
+            client = new Client({ 
+                host: 'localhost',
+                port: 5432,
+                database: 'unified',
+                user: 'postgres'
+                // No password for Docker postgres
+            });
+            await client.connect();
+            connected = true;
+            console.log('📊 Connected to database via Docker');
+        } catch (error) {
+            console.log('Docker connection failed, trying connection string...');
+            if (client) await client.end().catch(() => {});
+        }
     }
     
-    // Method 2: Connection string
+    // Method 2: Connection string (works for both local and Supabase)
     if (!connected) {
         try {
-            client = new Client({ connectionString: DATABASE_URL });
+            const clientConfig = { connectionString: finalUrl };
+            
+            // For SSL connections (Supabase), ensure SSL is configured properly
+            if (finalUrl.includes('sslmode=require') || finalUrl.includes('supabase.co')) {
+                clientConfig.ssl = {
+                    rejectUnauthorized: false // Required for Supabase
+                };
+            }
+            
+            client = new Client(clientConfig);
             await client.connect();
             connected = true;
             console.log('📊 Connected to database via connection string');
@@ -96,8 +115,8 @@ async function runMigrations() {
         }
     }
     
-    // Method 3: Explicit parameters (no password for Docker)
-    if (!connected) {
+    // Method 3: Explicit parameters (fallback for local Docker)
+    if (!connected && isLocalDocker) {
         try {
             client = new Client({
                 host: 'localhost',
@@ -114,6 +133,12 @@ async function runMigrations() {
             console.error('Please ensure Docker is running and database is accessible');
             process.exit(1);
         }
+    }
+    
+    if (!connected) {
+        console.error('❌ Failed to connect to database');
+        console.error(`Database URL: ${finalUrl.replace(/:[^:@]*@/, ':***@')}`); // Mask password in logs
+        process.exit(1);
     }
     
     try {
