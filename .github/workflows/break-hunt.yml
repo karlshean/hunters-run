@@ -1,0 +1,185 @@
+name: Weekly Break Hunt
+
+on:
+  schedule:
+    - cron: '0 0 * * 1' # Every Monday at midnight UTC
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  break-hunt:
+    name: Systematic Break Hunt
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Static Analysis Checks
+      - name: Scan for TODO/FIXME/HACK patterns
+        run: |
+          echo "🔍 Scanning for problematic patterns..."
+          COUNT=$(rg "TODO|FIXME|HACK|@ts-ignore" --type ts --type js --count-matches | awk -F: '{sum+=$2} END {print sum+0}')
+          echo "Found $COUNT problematic patterns"
+          if [ $COUNT -gt 20 ]; then
+            echo "❌ Too many TODO/FIXME/HACK/@ts-ignore patterns: $COUNT (limit: 20)"
+            rg "TODO|FIXME|HACK|@ts-ignore" --type ts --type js -n
+            exit 1
+          fi
+          echo "✅ Acceptable pattern count: $COUNT"
+
+      - name: Count 'any' usage
+        run: |
+          echo "🔍 Scanning for 'any' type usage..."
+          COUNT=$(rg '\bany\b' --type ts --count-matches | awk -F: '{sum+=$2} END {print sum+0}')
+          echo "Found $COUNT 'any' type usages"
+          if [ $COUNT -gt 50 ]; then
+            echo "❌ Too many 'any' type usages: $COUNT (limit: 50)"
+            rg '\bany\b' --type ts -n -C2 | head -50
+            exit 1
+          fi
+          echo "✅ Acceptable any usage count: $COUNT"
+
+      - name: Check environment variable documentation
+        run: |
+          echo "🔍 Checking environment variable documentation..."
+          # Extract all process.env usage
+          rg "process\.env\.[A-Z0-9_]+" --type ts --type js -o | sort -u > /tmp/env_usage.txt
+          
+          # Extract all .env.example entries
+          grep "^[A-Z0-9_]*=" .env.example | cut -d= -f1 | sort > /tmp/env_documented.txt
+          
+          # Find undocumented variables
+          UNDOCUMENTED=$(comm -23 /tmp/env_usage.txt /tmp/env_documented.txt | wc -l)
+          
+          if [ $UNDOCUMENTED -gt 0 ]; then
+            echo "❌ Found $UNDOCUMENTED undocumented environment variables:"
+            comm -23 /tmp/env_usage.txt /tmp/env_documented.txt
+            echo "Please add these to .env.example"
+            exit 1
+          fi
+          echo "✅ All environment variables are documented"
+
+      - name: Check for hardcoded secrets
+        run: |
+          echo "🔍 Scanning for potential hardcoded secrets..."
+          SECRETS=$(rg -i "password|secret|token|key" --type ts --type js | grep -E "(=\s*['\"][^'\"]{20,}|:\s*['\"][^'\"]{20,})" | wc -l)
+          if [ $SECRETS -gt 0 ]; then
+            echo "⚠️ Found $SECRETS potential hardcoded secrets (manual review needed):"
+            rg -i "password|secret|token|key" --type ts --type js | grep -E "(=\s*['\"][^'\"]{20,}|:\s*['\"][^'\"]{20,})" | head -10
+          else
+            echo "✅ No obvious hardcoded secrets found"
+          fi
+
+      # Build and Type Safety Checks  
+      - name: TypeScript compilation check
+        run: |
+          echo "🔍 Checking TypeScript compilation..."
+          npm run typecheck || (echo "❌ TypeScript compilation failed" && exit 1)
+          echo "✅ TypeScript compilation successful"
+
+      - name: Check for unsafe Promise.all usage
+        run: |
+          echo "🔍 Checking for unhandled Promise.all..."
+          UNSAFE=$(rg "Promise\.all\(" --type ts --type js | grep -v "\.catch\|try\|await" | wc -l)
+          if [ $UNSAFE -gt 0 ]; then
+            echo "⚠️ Found $UNSAFE Promise.all without error handling:"
+            rg "Promise\.all\(" --type ts --type js | grep -v "\.catch\|try\|await" | head -5
+            echo "Consider adding .catch() or wrapping in try/catch"
+          else
+            echo "✅ All Promise.all usage appears safe"
+          fi
+
+      # Security Checks
+      - name: Check CORS configuration
+        run: |
+          echo "🔍 Checking CORS configuration..."
+          if ! grep -q "localhost:3004" apps/hr-api/src/main.ts; then
+            echo "❌ CORS may not allow web UI port 3004"
+            exit 1
+          fi
+          echo "✅ CORS configuration includes required ports"
+
+      - name: Check for console.log in production code
+        run: |
+          echo "🔍 Checking for console.log statements..."
+          LOGS=$(rg "console\.log" --type ts --type js src/ apps/ | wc -l)
+          if [ $LOGS -gt 10 ]; then
+            echo "⚠️ Found $LOGS console.log statements (consider using proper logging):"
+            rg "console\.log" --type ts --type js src/ apps/ | head -5
+          else
+            echo "✅ Acceptable console.log usage: $LOGS"
+          fi
+
+      # Database Security Checks
+      - name: Check for missing RLS policies
+        run: |
+          echo "🔍 Checking database security..."
+          # This is a placeholder - would need actual database schema analysis
+          echo "✅ Database security checks placeholder (implement with schema analysis)"
+
+      # Performance Checks
+      - name: Check for potential performance issues
+        run: |
+          echo "🔍 Checking for performance anti-patterns..."
+          SYNC_ISSUES=$(rg "\.forEach\(" --type ts | wc -l)
+          if [ $SYNC_ISSUES -gt 20 ]; then
+            echo "⚠️ Found $SYNC_ISSUES forEach usages (consider for/of for large arrays)"
+          fi
+          echo "✅ Performance check completed"
+
+      # Generate Break Hunt Report
+      - name: Generate break hunt summary
+        run: |
+          echo "📊 Break Hunt Summary - $(date)" > break-hunt-summary.md
+          echo "================================" >> break-hunt-summary.md
+          echo "" >> break-hunt-summary.md
+          
+          echo "## Static Analysis Results" >> break-hunt-summary.md
+          echo "- TODO/FIXME patterns: $(rg 'TODO|FIXME|HACK|@ts-ignore' --type ts --type js --count-matches | awk -F: '{sum+=$2} END {print sum+0}')" >> break-hunt-summary.md
+          echo "- 'any' type usage: $(rg '\bany\b' --type ts --count-matches | awk -F: '{sum+=$2} END {print sum+0}')" >> break-hunt-summary.md
+          echo "- console.log statements: $(rg 'console\.log' --type ts --type js src/ apps/ 2>/dev/null | wc -l)" >> break-hunt-summary.md
+          echo "" >> break-hunt-summary.md
+          
+          echo "## Build Health" >> break-hunt-summary.md
+          echo "- TypeScript compilation: ✅ PASS" >> break-hunt-summary.md
+          echo "- Environment documentation: ✅ COMPLETE" >> break-hunt-summary.md
+          echo "" >> break-hunt-summary.md
+          
+          echo "Generated on: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> break-hunt-summary.md
+
+      - name: Upload break hunt report
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: break-hunt-report
+          path: break-hunt-summary.md
+
+      # Fail the job if critical issues found
+      - name: Final break hunt validation
+        run: |
+          echo "🏁 Break hunt completed"
+          echo "Review the uploaded report for detailed findings"
+          echo "✅ Weekly break hunt passed - no critical issues detected"
+
+  # Notify on failure
+  notify-failure:
+    name: Notify Break Hunt Failure
+    runs-on: ubuntu-latest
+    needs: break-hunt
+    if: failure()
+    
+    steps:
+      - name: Notify team of break hunt failure
+        run: |
+          echo "❌ Weekly break hunt detected critical issues!"
+          echo "Please review the break hunt report and address the findings."
+          echo "Critical issues must be resolved to maintain code quality."

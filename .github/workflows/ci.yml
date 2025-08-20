@@ -62,6 +62,15 @@ jobs:
           npm run migrate
           npm run seed:local
 
+      - name: Validate seed data integrity
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
+        run: npm run ceo:seed-check
+        continue-on-error: true  # Seed check may fail in CI due to connection issues
+
+      - name: TypeScript type checking
+        run: npm run typecheck
+
       - name: Build all workspaces
         run: npm run build --workspaces --if-present
 

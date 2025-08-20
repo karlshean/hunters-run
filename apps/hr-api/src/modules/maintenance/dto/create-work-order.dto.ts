@@ -17,4 +17,8 @@ export class CreateWorkOrderDto {
 
   @IsEnum(['low', 'normal', 'high'], { message: 'priority must be low, normal, or high' })
   priority: 'low' | 'normal' | 'high';
+
+  @IsString()
+  @IsOptional()
+  photoKey?: string;
 }

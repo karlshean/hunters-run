@@ -2,6 +2,8 @@
 
 Complete maintenance and payments management with audit trails, RLS security, and Stripe integration.
 
+[![Demo Flow](https://img.shields.io/badge/📺_Demo_Flow-Available-brightgreen?style=for-the-badge)](docs/demo.md)
+
 **Tech Stack:** Node 20, Postgres 16, Redis 7, NestJS, React
 
 ## How to Run

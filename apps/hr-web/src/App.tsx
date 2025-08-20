@@ -1,160 +1,56 @@
-import React, { useState } from 'react'
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { TenantView } from './components/TenantView';
+import { ManagerView } from './components/ManagerView';
+import './styles.css';
 
-interface ApiResponse {
-  status?: number;
-  data?: any;
-  error?: string;
+function HealthCheck() {
+  return (
+    <div className="p-6 max-w-4xl mx-auto">
+      <h1 className="text-3xl font-bold text-gray-900 mb-4">Hunters Run Web</h1>
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="text-green-600 font-semibold mb-4">✅ Web OK (Port 3001)</div>
+        <p className="text-gray-700 mb-4">
+          This web app provides the complete maintenance workflow demo. 
+          The API should be running on port 3000.
+        </p>
+        <div className="space-y-2 text-sm text-gray-600">
+          <p><strong>API:</strong> http://localhost:3000</p>
+          <p><strong>Web:</strong> http://localhost:3001</p>
+        </div>
+        <div className="mt-6 space-x-4">
+          <a 
+            href="/tenant" 
+            className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          >
+            Tenant Portal
+          </a>
+          <a 
+            href="/manager" 
+            className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          >
+            Manager Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function App() {
-  const [result, setResult] = useState<ApiResponse | null>(null)
-  const [loading, setLoading] = useState(false)
-
-  const checkApiHealth = async () => {
-    setLoading(true)
-    setResult(null)
-    
-    try {
-      const response = await fetch('http://localhost:3000/api/health')
-      const data = await response.json()
-      
-      setResult({
-        status: response.status,
-        data: data
-      })
-    } catch (error) {
-      setResult({
-        error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const checkApiReady = async () => {
-    setLoading(true)
-    setResult(null)
-    
-    try {
-      const response = await fetch('http://localhost:3000/api/ready')
-      const data = await response.json()
-      
-      setResult({
-        status: response.status,
-        data: data
-      })
-    } catch (error) {
-      setResult({
-        error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const checkHealthReady = async () => {
-    setLoading(true)
-    setResult(null)
-    
-    try {
-      const response = await fetch('http://localhost:3000/api/health/ready')
-      const data = await response.json()
-      
-      setResult({
-        status: response.status,
-        data: data
-      })
-    } catch (error) {
-      setResult({
-        error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const checkLookups = async () => {
-    setLoading(true)
-    setResult(null)
-    
-    try {
-      const response = await fetch('http://localhost:3000/api/lookups/units', {
-        headers: {
-          'x-org-id': '00000000-0000-0000-0000-000000000001'
-        }
-      })
-      const data = await response.json()
-      
-      setResult({
-        status: response.status,
-        data: data
-      })
-    } catch (error) {
-      setResult({
-        error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const openFullDemo = () => {
-    window.open('/demo', '_blank')
-  }
-
   return (
-    <div className="container">
-      <h1>Hunters Run Web</h1>
-      <div className="status">✅ Web OK (Port 3001)</div>
-      
-      <p>This minimal web app demonstrates API connectivity. The API should be running on port 3000.</p>
-      
-      <div>
-        <button onClick={checkApiHealth} disabled={loading}>
-          Check API Health (/api/health)
-        </button>
-        
-        <button onClick={checkApiReady} disabled={loading}>
-          Check API Ready (/api/ready)
-        </button>
-        
-        <button onClick={checkHealthReady} disabled={loading}>
-          Check Health Ready (/api/health/ready)
-        </button>
-        
-        <button onClick={checkLookups} disabled={loading}>
-          Test Lookups (with org header)
-        </button>
+    <Router>
+      <div className="min-h-screen bg-gray-50">
+        <Routes>
+          <Route path="/" element={<HealthCheck />} />
+          <Route path="/tenant" element={<TenantView />} />
+          <Route path="/manager" element={<ManagerView />} />
+          <Route path="/tech" element={<ManagerView />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </div>
-      
-      <div style={{ marginTop: '20px', fontSize: '14px', color: '#64748b' }}>
-        <p><strong>API:</strong> http://localhost:3000</p>
-        <p><strong>Web:</strong> http://localhost:3001 (this page)</p>
-      </div>
-      
-      {loading && (
-        <div className="result">
-          Loading...
-        </div>
-      )}
-      
-      {result && !loading && (
-        <div className={`result ${result.error ? 'error' : 'success'}`}>
-          {result.error ? (
-            <div>
-              <strong>❌ Error:</strong><br />
-              <pre>{result.error}</pre>
-            </div>
-          ) : (
-            <div>
-              <strong>✅ Success (Status {result.status}):</strong><br />
-              <pre>{JSON.stringify(result.data, null, 2)}</pre>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  )
+    </Router>
+  );
 }
 
-export default App
+export default App;

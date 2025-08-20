@@ -1,0 +1,233 @@
+name: Performance Tests
+
+on:
+  push:
+    branches: [ main, hardening/perf-and-chaos ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of performance test to run'
+        required: true
+        default: 'smoke'
+        type: choice
+        options:
+          - smoke
+          - full
+      save_reports:
+        description: 'Save detailed reports to artifacts'
+        required: false
+        default: true
+        type: boolean
+
+env:
+  NODE_VERSION: '18'
+  DATABASE_URL: 'postgres://postgres:postgres@localhost:5432/unified'
+
+jobs:
+  perf-smoke:
+    name: Performance Smoke Tests
+    runs-on: ubuntu-latest
+    if: github.event_name != 'workflow_dispatch' || github.event.inputs.test_type == 'smoke'
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: unified
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup database
+        run: |
+          npm run migrate
+          npm run seed:local
+
+      - name: Build application
+        run: npm run build:hr
+
+      - name: Start application in background
+        run: |
+          npm run dev:hr &
+          sleep 10
+          # Wait for app to be ready
+          timeout 30s bash -c 'until curl -f http://localhost:3000/api/health; do sleep 2; done'
+        
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run work-order reads smoke test
+        env:
+          K6_SCENARIO: smoke
+          BASE_URL: http://localhost:3000
+        run: |
+          mkdir -p reports/perf
+          k6 run --out json=reports/perf/reads-smoke.json tests/load/work-order-reads.js
+
+      - name: Run work-order creates smoke test
+        env:
+          K6_SCENARIO: smoke
+          BASE_URL: http://localhost:3000
+        run: |
+          k6 run --out json=reports/perf/creates-smoke.json tests/load/work-order-creates.js
+
+      - name: Generate performance summary
+        run: |
+          echo "## Performance Smoke Test Results" > reports/perf/summary.md
+          echo "" >> reports/perf/summary.md
+          echo "### Work Order Reads" >> reports/perf/summary.md
+          echo "- Target: 10 RPS, p95 < 150ms" >> reports/perf/summary.md
+          echo "- Duration: 30 seconds" >> reports/perf/summary.md
+          echo "" >> reports/perf/summary.md
+          echo "### Work Order Creates" >> reports/perf/summary.md
+          echo "- Target: 5 RPS, error rate < 1%" >> reports/perf/summary.md
+          echo "- Duration: 30 seconds" >> reports/perf/summary.md
+          echo "" >> reports/perf/summary.md
+          echo "Generated at: $(date)" >> reports/perf/summary.md
+
+      - name: Upload performance reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: perf-smoke-reports
+          path: reports/perf/
+          retention-days: 30
+
+  perf-full:
+    name: Full Performance Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.test_type == 'full'
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: unified
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup database
+        run: |
+          npm run migrate
+          npm run seed:local
+
+      - name: Build application
+        run: npm run build:hr
+
+      - name: Start application in background
+        run: |
+          npm run dev:hr &
+          sleep 10
+          # Wait for app to be ready
+          timeout 30s bash -c 'until curl -f http://localhost:3000/api/health; do sleep 2; done'
+        
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Run full work-order reads test
+        env:
+          K6_SCENARIO: load
+          BASE_URL: http://localhost:3000
+        run: |
+          mkdir -p reports/perf
+          k6 run --out json=reports/perf/reads-full.json tests/load/work-order-reads.js
+
+      - name: Run full work-order creates test
+        env:
+          K6_SCENARIO: load
+          BASE_URL: http://localhost:3000
+        run: |
+          k6 run --out json=reports/perf/creates-full.json tests/load/work-order-creates.js
+
+      - name: Generate detailed performance report
+        run: |
+          echo "## Full Performance Test Results" > reports/perf/full-summary.md
+          echo "" >> reports/perf/full-summary.md
+          echo "### Work Order Reads - Full Load Test" >> reports/perf/full-summary.md
+          echo "- Target: 100 RPS, p95 < 150ms" >> reports/perf/full-summary.md
+          echo "- Duration: 5 minutes" >> reports/perf/full-summary.md
+          echo "" >> reports/perf/full-summary.md
+          echo "### Work Order Creates - Full Load Test" >> reports/perf/full-summary.md
+          echo "- Target: 20 RPS, error rate < 1%" >> reports/perf/full-summary.md
+          echo "- Duration: 5 minutes" >> reports/perf/full-summary.md
+          echo "" >> reports/perf/full-summary.md
+          echo "Generated at: $(date)" >> reports/perf/full-summary.md
+
+      - name: Upload full performance reports
+        uses: actions/upload-artifact@v4
+        if: always() && (github.event.inputs.save_reports == 'true' || github.event.inputs.save_reports == true)
+        with:
+          name: perf-full-reports
+          path: reports/perf/
+          retention-days: 90

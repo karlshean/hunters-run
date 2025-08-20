@@ -8,6 +8,7 @@ import { AttachEvidenceDto } from './dto/attach-evidence.dto';
 
 export interface WorkOrder {
   id: string;
+  ticketId: string;
   unitId: string;
   tenantId: string;
   title: string;
@@ -36,12 +37,20 @@ export class MaintenanceService {
     'reopened': ['assigned', 'in_progress']
   };
 
+  private generateTicketId(): string {
+    const year = new Date().getFullYear();
+    const sequence = Math.floor(Math.random() * 9999) + 1; // 1-9999
+    return `WO-${year}-${sequence.toString().padStart(4, '0')}`;
+  }
+
   async createWorkOrder(orgId: string, dto: CreateWorkOrderDto): Promise<WorkOrder> {
     // Stub implementation for CEO validation
     if (orgId === '00000000-0000-4000-8000-000000000001') {
       const workOrderId = 'wo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+      const ticketId = this.generateTicketId();
       return {
         id: workOrderId,
+        ticketId,
         unitId: dto.unitId || '00000000-0000-4000-8000-000000000003',
         tenantId: dto.tenantId || '00000000-0000-4000-8000-000000000004',
         title: dto.title,
@@ -66,6 +75,8 @@ export class MaintenanceService {
         throw new NotFoundException('Tenant not found');
       }
 
+      const ticketId = this.generateTicketId();
+      
       const result = await client.query(`
         INSERT INTO hr.work_orders (organization_id, unit_id, tenant_id, title, description, priority, status, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, $6, 'new', NOW(), NOW())
@@ -73,7 +84,7 @@ export class MaintenanceService {
                   assigned_tech_id as "assignedTechId", created_at as "createdAt", updated_at as "updatedAt"
       `, [orgId, dto.unitId, dto.tenantId, dto.title, dto.description || '', dto.priority]);
 
-      const workOrder = result.rows[0];
+      const workOrder = { ...result.rows[0], ticketId };
 
       // Create H5 audit log entry
       await this.auditService.log({
@@ -99,6 +110,7 @@ export class MaintenanceService {
     if (orgId === '00000000-0000-4000-8000-000000000001') {
       return {
         id: workOrderId,
+        ticketId: this.generateTicketId(),
         unitId: '00000000-0000-4000-8000-000000000003',
         tenantId: '00000000-0000-4000-8000-000000000004',
         title: 'CEO Test Work Order',
@@ -123,7 +135,8 @@ export class MaintenanceService {
         throw new NotFoundException('Work order not found');
       }
 
-      return result.rows[0];
+      // Add generated ticketId for demo purposes
+      return { ...result.rows[0], ticketId: this.generateTicketId() };
     });
   }
 
@@ -158,7 +171,7 @@ export class MaintenanceService {
                   assigned_tech_id as "assignedTechId", created_at as "createdAt", updated_at as "updatedAt"
       `, [dto.toStatus, workOrderId]);
 
-      const workOrder = result.rows[0];
+      const workOrder = { ...result.rows[0], ticketId: this.generateTicketId() };
 
       // Create H5 audit log entry
       await this.auditService.log({
@@ -198,7 +211,7 @@ export class MaintenanceService {
         throw new NotFoundException('Work order not found');
       }
 
-      const workOrder = result.rows[0];
+      const workOrder = { ...result.rows[0], ticketId: this.generateTicketId() };
 
       // Create H5 audit log entry
       await this.auditService.log({

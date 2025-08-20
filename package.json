@@ -37,7 +37,11 @@
     "perf:all": "powershell -ExecutionPolicy Bypass -File scripts/run-perf-tests.ps1 -TestType both",
     "chaos:redis": "powershell -ExecutionPolicy Bypass -File scripts/chaos.ps1 -Test redis-restart",
     "chaos:postgres": "powershell -ExecutionPolicy Bypass -File scripts/chaos.ps1 -Test postgres-restart",
-    "chaos:all": "powershell -ExecutionPolicy Bypass -File scripts/chaos.ps1 -Test all"
+    "chaos:all": "powershell -ExecutionPolicy Bypass -File scripts/chaos.ps1 -Test all",
+    "ceo:seed-check": "ts-node ./scripts/seed-check.ts",
+    "test:e2e": "npm run -w apps/hr-web test:e2e && npm run -w apps/hr-api test -- --testPathPattern=e2e",
+    "typecheck": "npm run -w apps/hr-api build && npm run -w apps/hr-web build",
+    "lint": "echo 'Lint configuration pending'"
   },
   "dependencies": {
     "uuid": "^11.1.0"

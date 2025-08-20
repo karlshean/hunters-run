@@ -1,0 +1,1005 @@
+# PRODUCTION DEPLOYMENT CONFIGURATIONS
+
+# docker-compose.prod.yml
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: production
+    container_name: hunters-run-api-prod
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - TELNYX_API_KEY=${TELNYX_API_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - LOG_LEVEL=info
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`api.huntersrun.com`)"
+      - "traefik.http.routers.api.tls=true"
+      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+      target: production
+    container_name: hunters-run-worker-prod
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - SENDGRID_API_KEY=${SENDGRID_API_KEY}
+      - TELNYX_API_KEY=${TELNYX_API_KEY}
+      - LOG_LEVEL=info
+    restart: unless-stopped
+    depends_on:
+      - api
+
+networks:
+  default:
+    external:
+      name: traefik
+
+# kubernetes/namespace.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hunters-run
+
+---
+# kubernetes/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: hunters-run-config
+  namespace: hunters-run
+data:
+  NODE_ENV: "production"
+  LOG_LEVEL: "info"
+  PORT: "3000"
+  AWS_REGION: "us-east-1"
+
+---
+# kubernetes/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hunters-run-secrets
+  namespace: hunters-run
+type: Opaque
+stringData:
+  DATABASE_URL: "postgresql://user:pass@postgres:5432/hunters_run"
+  REDIS_URL: "redis://redis:6379"
+  FIREBASE_PROJECT_ID: "your-project-id"
+  FIREBASE_PRIVATE_KEY: |
+    -----BEGIN PRIVATE KEY-----
+    your-private-key-here
+    -----END PRIVATE KEY-----
+  FIREBASE_CLIENT_EMAIL: "firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com"
+  AWS_ACCESS_KEY_ID: "your-access-key"
+  AWS_SECRET_ACCESS_KEY: "your-secret-key"
+  AWS_S3_BUCKET: "hunters-run-files-prod"
+  SENDGRID_API_KEY: "SG.xxxxxxxxxxxxxxxxxxxx"
+  TELNYX_API_KEY: "KEY01xxxxxxxxxxxxxxxxxx"
+  STRIPE_SECRET_KEY: "sk_live_xxxxxxxxxxxxxxxxxxxx"
+  STRIPE_WEBHOOK_SECRET: "whsec_xxxxxxxxxxxxxxxxxxxx"
+
+---
+# kubernetes/api-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hunters-run-api
+  namespace: hunters-run
+  labels:
+    app: hunters-run-api
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hunters-run-api
+  template:
+    metadata:
+      labels:
+        app: hunters-run-api
+    spec:
+      containers:
+      - name: api
+        image: hunters-run/api:latest
+        ports:
+        - containerPort: 3000
+        envFrom:
+        - configMapRef:
+            name: hunters-run-config
+        - secretRef:
+            name: hunters-run-secrets
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+
+---
+# kubernetes/api-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: hunters-run-api-service
+  namespace: hunters-run
+spec:
+  selector:
+    app: hunters-run-api
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: LoadBalancer
+
+---
+# kubernetes/worker-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hunters-run-worker
+  namespace: hunters-run
+  labels:
+    app: hunters-run-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hunters-run-worker
+  template:
+    metadata:
+      labels:
+        app: hunters-run-worker
+    spec:
+      containers:
+      - name: worker
+        image: hunters-run/worker:latest
+        envFrom:
+        - configMapRef:
+            name: hunters-run-config
+        - secretRef:
+            name: hunters-run-secrets
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1001
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+
+---
+# kubernetes/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: hunters-run-api-hpa
+  namespace: hunters-run
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: hunters-run-api
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# terraform/main.tf
+terraform {
+  required_version = ">= 1.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+# VPC Configuration
+resource "aws_vpc" "hunters_run_vpc" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name = "hunters-run-vpc"
+    Environment = var.environment
+  }
+}
+
+# Internet Gateway
+resource "aws_internet_gateway" "hunters_run_igw" {
+  vpc_id = aws_vpc.hunters_run_vpc.id
+
+  tags = {
+    Name = "hunters-run-igw"
+    Environment = var.environment
+  }
+}
+
+# Public Subnets
+resource "aws_subnet" "public_subnets" {
+  count             = 2
+  vpc_id            = aws_vpc.hunters_run_vpc.id
+  cidr_block        = "10.0.${count.index + 1}.0/24"
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "hunters-run-public-subnet-${count.index + 1}"
+    Environment = var.environment
+  }
+}
+
+# Private Subnets
+resource "aws_subnet" "private_subnets" {
+  count             = 2
+  vpc_id            = aws_vpc.hunters_run_vpc.id
+  cidr_block        = "10.0.${count.index + 10}.0/24"
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  tags = {
+    Name = "hunters-run-private-subnet-${count.index + 1}"
+    Environment = var.environment
+  }
+}
+
+# RDS PostgreSQL
+resource "aws_db_subnet_group" "hunters_run_db_subnet_group" {
+  name       = "hunters-run-db-subnet-group"
+  subnet_ids = aws_subnet.private_subnets[*].id
+
+  tags = {
+    Name = "hunters-run-db-subnet-group"
+    Environment = var.environment
+  }
+}
+
+resource "aws_security_group" "rds_sg" {
+  name_prefix = "hunters-run-rds-"
+  vpc_id      = aws_vpc.hunters_run_vpc.id
+
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.hunters_run_vpc.cidr_block]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "hunters-run-rds-sg"
+    Environment = var.environment
+  }
+}
+
+resource "aws_db_instance" "hunters_run_db" {
+  identifier = "hunters-run-${var.environment}"
+  
+  engine         = "postgres"
+  engine_version = "15.4"
+  instance_class = var.db_instance_class
+  
+  allocated_storage     = var.db_allocated_storage
+  max_allocated_storage = var.db_max_allocated_storage
+  storage_type          = "gp3"
+  storage_encrypted     = true
+  
+  db_name  = "hunters_run"
+  username = var.db_username
+  password = var.db_password
+  
+  vpc_security_group_ids = [aws_security_group.rds_sg.id]
+  db_subnet_group_name   = aws_db_subnet_group.hunters_run_db_subnet_group.name
+  
+  backup_retention_period = 7
+  backup_window          = "03:00-04:00"
+  maintenance_window     = "sun:04:00-sun:05:00"
+  
+  skip_final_snapshot = var.environment == "development"
+  deletion_protection = var.environment == "production"
+  
+  performance_insights_enabled = true
+  monitoring_interval         = 60
+  
+  tags = {
+    Name = "hunters-run-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# ElastiCache Redis
+resource "aws_elasticache_subnet_group" "hunters_run_cache_subnet_group" {
+  name       = "hunters-run-cache-subnet-group"
+  subnet_ids = aws_subnet.private_subnets[*].id
+
+  tags = {
+    Name = "hunters-run-cache-subnet-group"
+    Environment = var.environment
+  }
+}
+
+resource "aws_security_group" "elasticache_sg" {
+  name_prefix = "hunters-run-cache-"
+  vpc_id      = aws_vpc.hunters_run_vpc.id
+
+  ingress {
+    from_port   = 6379
+    to_port     = 6379
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.hunters_run_vpc.cidr_block]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "hunters-run-cache-sg"
+    Environment = var.environment
+  }
+}
+
+resource "aws_elasticache_replication_group" "hunters_run_redis" {
+  replication_group_id       = "hunters-run-${var.environment}"
+  description                = "Redis cluster for Hunters Run"
+  
+  port                       = 6379
+  parameter_group_name       = "default.redis7"
+  node_type                  = var.redis_node_type
+  num_cache_clusters         = 2
+  
+  subnet_group_name          = aws_elasticache_subnet_group.hunters_run_cache_subnet_group.name
+  security_group_ids         = [aws_security_group.elasticache_sg.id]
+  
+  at_rest_encryption_enabled = true
+  transit_encryption_enabled = true
+  
+  tags = {
+    Name = "hunters-run-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# S3 Bucket for Files
+resource "aws_s3_bucket" "hunters_run_files" {
+  bucket = "hunters-run-files-${var.environment}-${random_id.bucket_suffix.hex}"
+
+  tags = {
+    Name = "hunters-run-files-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+resource "aws_s3_bucket_versioning" "hunters_run_files_versioning" {
+  bucket = aws_s3_bucket.hunters_run_files.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "hunters_run_files_encryption" {
+  bucket = aws_s3_bucket.hunters_run_files.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "hunters_run_files_pab" {
+  bucket = aws_s3_bucket.hunters_run_files.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# ECS Cluster
+resource "aws_ecs_cluster" "hunters_run_cluster" {
+  name = "hunters-run-${var.environment}"
+
+  setting {
+    name  = "containerInsights"
+    value = "enabled"
+  }
+
+  tags = {
+    Name = "hunters-run-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# ECS Task Definition
+resource "aws_ecs_task_definition" "hunters_run_api" {
+  family                   = "hunters-run-api-${var.environment}"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = var.api_cpu
+  memory                   = var.api_memory
+  execution_role_arn       = aws_iam_role.ecs_execution_role.arn
+  task_role_arn           = aws_iam_role.ecs_task_role.arn
+
+  container_definitions = jsonencode([
+    {
+      name  = "hunters-run-api"
+      image = "${var.ecr_repository_url}:latest"
+      
+      portMappings = [
+        {
+          containerPort = 3000
+          protocol      = "tcp"
+        }
+      ]
+      
+      environment = [
+        {
+          name  = "NODE_ENV"
+          value = var.environment
+        },
+        {
+          name  = "PORT"
+          value = "3000"
+        },
+        {
+          name  = "AWS_REGION"
+          value = var.aws_region
+        },
+        {
+          name  = "AWS_S3_BUCKET"
+          value = aws_s3_bucket.hunters_run_files.bucket
+        }
+      ]
+      
+      secrets = [
+        {
+          name      = "DATABASE_URL"
+          valueFrom = aws_ssm_parameter.database_url.arn
+        },
+        {
+          name      = "REDIS_URL"
+          valueFrom = aws_ssm_parameter.redis_url.arn
+        },
+        {
+          name      = "FIREBASE_PROJECT_ID"
+          valueFrom = aws_ssm_parameter.firebase_project_id.arn
+        },
+        {
+          name      = "FIREBASE_PRIVATE_KEY"
+          valueFrom = aws_ssm_parameter.firebase_private_key.arn
+        },
+        {
+          name      = "FIREBASE_CLIENT_EMAIL"
+          valueFrom = aws_ssm_parameter.firebase_client_email.arn
+        },
+        {
+          name      = "SENDGRID_API_KEY"
+          valueFrom = aws_ssm_parameter.sendgrid_api_key.arn
+        },
+        {
+          name      = "TELNYX_API_KEY"
+          valueFrom = aws_ssm_parameter.telnyx_api_key.arn
+        },
+        {
+          name      = "STRIPE_SECRET_KEY"
+          valueFrom = aws_ssm_parameter.stripe_secret_key.arn
+        },
+        {
+          name      = "STRIPE_WEBHOOK_SECRET"
+          valueFrom = aws_ssm_parameter.stripe_webhook_secret.arn
+        }
+      ]
+      
+      healthCheck = {
+        command     = ["CMD-SHELL", "curl -f http://localhost:3000/health || exit 1"]
+        interval    = 30
+        timeout     = 5
+        retries     = 3
+        startPeriod = 60
+      }
+      
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.hunters_run_api.name
+          "awslogs-region"        = var.aws_region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
+    }
+  ])
+
+  tags = {
+    Name = "hunters-run-api-${var.environment}"
+    Environment = var.environment
+  }
+}
+
+# terraform/variables.tf
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  validation {
+    condition     = contains(["development", "staging", "production"], var.environment)
+    error_message = "Environment must be development, staging, or production."
+  }
+}
+
+variable "db_instance_class" {
+  description = "RDS instance class"
+  type        = string
+  default     = "db.t3.micro"
+}
+
+variable "db_allocated_storage" {
+  description = "RDS allocated storage (GB)"
+  type        = number
+  default     = 20
+}
+
+variable "db_max_allocated_storage" {
+  description = "RDS max allocated storage (GB)"
+  type        = number
+  default     = 100
+}
+
+variable "db_username" {
+  description = "RDS username"
+  type        = string
+  default     = "postgres"
+}
+
+variable "db_password" {
+  description = "RDS password"
+  type        = string
+  sensitive   = true
+}
+
+variable "redis_node_type" {
+  description = "ElastiCache Redis node type"
+  type        = string
+  default     = "cache.t3.micro"
+}
+
+variable "api_cpu" {
+  description = "ECS API task CPU units"
+  type        = string
+  default     = "256"
+}
+
+variable "api_memory" {
+  description = "ECS API task memory (MB)"
+  type        = string
+  default     = "512"
+}
+
+variable "ecr_repository_url" {
+  description = "ECR repository URL for application images"
+  type        = string
+}
+
+# terraform/outputs.tf
+output "vpc_id" {
+  description = "ID of the VPC"
+  value       = aws_vpc.hunters_run_vpc.id
+}
+
+output "database_endpoint" {
+  description = "RDS instance endpoint"
+  value       = aws_db_instance.hunters_run_db.endpoint
+  sensitive   = true
+}
+
+output "redis_endpoint" {
+  description = "ElastiCache Redis endpoint"
+  value       = aws_elasticache_replication_group.hunters_run_redis.primary_endpoint_address
+  sensitive   = true
+}
+
+output "s3_bucket_name" {
+  description = "Name of the S3 bucket for file storage"
+  value       = aws_s3_bucket.hunters_run_files.bucket
+}
+
+output "ecs_cluster_name" {
+  description = "Name of the ECS cluster"
+  value       = aws_ecs_cluster.hunters_run_cluster.name
+}
+
+# .github/workflows/ci-cd.yml
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: hunters-run
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgis/postgis:15-3.3
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: hunters_run_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Build packages
+      run: npm run build
+
+    - name: Run linting
+      run: npm run lint
+
+    - name: Run unit tests
+      run: npm run test
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hunters_run_test
+        REDIS_URL: redis://localhost:6379
+        FIREBASE_PROJECT_ID: test-project
+        FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY_TEST }}
+        FIREBASE_CLIENT_EMAIL: test@test.iam.gserviceaccount.com
+        AWS_ACCESS_KEY_ID: test
+        AWS_SECRET_ACCESS_KEY: test
+        AWS_REGION: us-east-1
+        AWS_S3_BUCKET: test-bucket
+        SENDGRID_API_KEY: test
+        TELNYX_API_KEY: test
+        STRIPE_SECRET_KEY: sk_test_123
+        STRIPE_WEBHOOK_SECRET: whsec_test
+
+    - name: Run database migrations
+      run: |
+        cd apps/api
+        npm run typeorm:run
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hunters_run_test
+
+    - name: Run E2E tests
+      run: npm run test:e2e
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/hunters_run_test
+        REDIS_URL: redis://localhost:6379
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push API image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker build -f apps/api/Dockerfile -t $ECR_REGISTRY/$ECR_REPOSITORY-api:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY-api:$IMAGE_TAG
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY-api:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY-api:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY-api:latest
+
+    - name: Build and push Worker image
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker build -f apps/worker/Dockerfile -t $ECR_REGISTRY/$ECR_REPOSITORY-worker:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY-worker:$IMAGE_TAG
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY-worker:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY-worker:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY-worker:latest
+
+  deploy-staging:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Deploy to ECS Staging
+      run: |
+        aws ecs update-service \
+          --cluster hunters-run-staging \
+          --service hunters-run-api-staging \
+          --force-new-deployment
+
+        aws ecs update-service \
+          --cluster hunters-run-staging \
+          --service hunters-run-worker-staging \
+          --force-new-deployment
+
+    - name: Wait for deployment
+      run: |
+        aws ecs wait services-stable \
+          --cluster hunters-run-staging \
+          --services hunters-run-api-staging hunters-run-worker-staging
+
+  deploy-production:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Run database migrations
+      run: |
+        # Run migrations in production
+        aws ecs run-task \
+          --cluster hunters-run-production \
+          --task-definition hunters-run-migration-production \
+          --launch-type FARGATE \
+          --network-configuration "awsvpcConfiguration={subnets=[subnet-xxx],securityGroups=[sg-xxx],assignPublicIp=ENABLED}"
+
+    - name: Deploy to ECS Production
+      run: |
+        aws ecs update-service \
+          --cluster hunters-run-production \
+          --service hunters-run-api-production \
+          --force-new-deployment
+
+        aws ecs update-service \
+          --cluster hunters-run-production \
+          --service hunters-run-worker-production \
+          --force-new-deployment
+
+    - name: Wait for deployment
+      run: |
+        aws ecs wait services-stable \
+          --cluster hunters-run-production \
+          --services hunters-run-api-production hunters-run-worker-production
+
+    - name: Health check
+      run: |
+        curl -f https://api.huntersrun.com/health || exit 1
+
+# scripts/deploy.sh
+#!/bin/bash
+set -e
+
+ENVIRONMENT=${1:-staging}
+AWS_REGION=${AWS_REGION:-us-east-1}
+
+echo "🚀 Deploying to $ENVIRONMENT..."
+
+# Build and push images
+echo "📦 Building images..."
+docker build -f apps/api/Dockerfile -t hunters-run-api:latest .
+docker build -f apps/worker/Dockerfile -t hunters-run-worker:latest .
+
+# Tag and push to ECR
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+ECR_REGISTRY="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
+
+echo "🔖 Tagging images..."
+docker tag hunters-run-api:latest $ECR_REGISTRY/hunters-run-api:latest
+docker tag hunters-run-worker:latest $ECR_REGISTRY/hunters-run-worker:latest
+
+echo "📤 Pushing to ECR..."
+aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+docker push $ECR_REGISTRY/hunters-run-api:latest
+docker push $ECR_REGISTRY/hunters-run-worker:latest
+
+# Update ECS services
+echo "🔄 Updating ECS services..."
+aws ecs update-service \
+  --cluster "hunters-run-$ENVIRONMENT" \
+  --service "hunters-run-api-$ENVIRONMENT" \
+  --force-new-deployment \
+  --region $AWS_REGION
+
+aws ecs update-service \
+  --cluster "hunters-run-$ENVIRONMENT" \
+  --service "hunters-run-worker-$ENVIRONMENT" \
+  --force-new-deployment \
+  --region $AWS_REGION
+
+echo "⏳ Waiting for deployment to complete..."
+aws ecs wait services-stable \
+  --cluster "hunters-run-$ENVIRONMENT" \
+  --services "hunters-run-api-$ENVIRONMENT" "hunters-run-worker-$ENVIRONMENT" \
+  --region $AWS_REGION
+
+echo "✅ Deployment to $ENVIRONMENT completed successfully!"
+
+# Health check
+if [ "$ENVIRONMENT" = "production" ]; then
+  echo "🔍 Running health check..."
+  curl -f https://api.huntersrun.com/health || {
+    echo "❌ Health check failed!"
+    exit 1
+  }
+  echo "✅ Health check passed!"
+fi
+
+# scripts/backup.sh
+#!/bin/bash
+set -e
+
+ENVIRONMENT=${1:-production}
+BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+S3_BUCKET="hunters-run-backups-$ENVIRONMENT"
+
+echo "💾 Creating database backup for $ENVIRONMENT..."
+
+# Get database URL from SSM
+DATABASE_URL=$(aws ssm get-parameter \
+  --name "/hunters-run/$ENVIRONMENT/database-url" \
+  --with-decryption \
+  --query Parameter.Value \
+  --output text)
+
+# Create backup
+BACKUP_FILE="hunters_run_backup_${ENVIRONMENT}_${BACKUP_DATE}.sql"
+
+echo "📤 Backing up database..."
+pg_dump "$DATABASE_URL" > "$BACKUP_FILE"
+
+# Compress backup
+gzip "$BACKUP_FILE"
+COMPRESSED_FILE="${BACKUP_FILE}.gz"
+
+# Upload to S3
+echo "☁️ Uploading to S3..."
+aws s3 cp "$COMPRESSED_FILE" "s3://$S3_BUCKET/database/$COMPRESSED_FILE"
+
+# Clean up local files
+rm "$COMPRESSED_FILE"
+
+# Cleanup old backups (keep last 30 days)
+echo "🧹 Cleaning up old backups..."
+aws s3 ls "s3://$S3_BUCKET/database/" \
+  | awk '$1 < "'$(date -d '30 days ago' '+%Y-%m-%d')'" {print $4}' \
+  | xargs -I {} aws s3 rm "s3://$S3_BUCKET/database/{}"
+
+echo "✅ Backup completed: $COMPRESSED_FILE"
