@@ -52,6 +52,27 @@ function App() {
     }
   }
 
+  const checkHealthReady = async () => {
+    setLoading(true)
+    setResult(null)
+    
+    try {
+      const response = await fetch('http://localhost:3000/api/health/ready')
+      const data = await response.json()
+      
+      setResult({
+        status: response.status,
+        data: data
+      })
+    } catch (error) {
+      setResult({
+        error: `Network error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const checkLookups = async () => {
     setLoading(true)
     setResult(null)
@@ -90,11 +111,15 @@ function App() {
       
       <div>
         <button onClick={checkApiHealth} disabled={loading}>
-          Check API Health
+          Check API Health (/api/health)
         </button>
         
         <button onClick={checkApiReady} disabled={loading}>
-          Check API Ready
+          Check API Ready (/api/ready)
+        </button>
+        
+        <button onClick={checkHealthReady} disabled={loading}>
+          Check Health Ready (/api/health/ready)
         </button>
         
         <button onClick={checkLookups} disabled={loading}>

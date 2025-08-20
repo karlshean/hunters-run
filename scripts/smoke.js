@@ -102,6 +102,17 @@ async function testHealthEndpoints() {
   } catch (e) {
     failure(`/api/ready error: ${e.message}`);
   }
+
+  try {
+    const healthReady = await makeRequest('GET', '/api/health/ready');
+    if (healthReady.status === 200) {
+      success('/api/health/ready 200');
+    } else {
+      failure(`/api/health/ready ${healthReady.status}`);
+    }
+  } catch (e) {
+    failure(`/api/health/ready error: ${e.message}`);
+  }
 }
 
 async function testLookups() {

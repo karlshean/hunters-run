@@ -71,9 +71,28 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
           REDIS_URL: redis://localhost:6379
 
+      - name: Run security tests
+        run: npm run -w apps/hr-api test -- --testPathPattern=security
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
+          REDIS_URL: redis://localhost:6379
+
       - name: Generate OpenAPI spec
         run: npm run openapi:generate
         continue-on-error: true
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
+          REDIS_URL: redis://localhost:6379
+
+      - name: Test health endpoints
+        run: |
+          echo "Testing /api/ready endpoint..."
+          curl -f http://localhost:3000/api/ready || exit 1
+          echo "✅ /api/ready OK"
+          
+          echo "Testing /api/health/ready endpoint..."
+          curl -f http://localhost:3000/api/health/ready || exit 1
+          echo "✅ /api/health/ready OK"
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
           REDIS_URL: redis://localhost:6379
@@ -121,3 +140,135 @@ jobs:
         with:
           name: e2e-report
           path: reports/e2e.html
+
+  ceo-validation:
+    name: CEO Validation
+    runs-on: ubuntu-latest
+    needs: test
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: unified
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run migrations and seed CEO demo data
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
+        run: |
+          npm run migrate
+          npm run seed
+
+      - name: Start API server
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
+          REDIS_URL: redis://localhost:6379
+          ALLOW_INSECURE_STRIPE_WEBHOOK_TEST: true
+        run: |
+          npm run dev:hr &
+          sleep 15  # Wait for API to be ready
+
+      - name: Run CEO validation
+        run: npm run ceo:validate:sh
+
+      - name: CEO validation must pass
+        if: failure()
+        run: |
+          echo "❌ CEO validation failed!"
+          echo "The CEO validation script must pass before merging."
+          exit 1
+
+  security-checks:
+    name: Security Checks
+    runs-on: ubuntu-latest
+    needs: test
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: unified
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run migrations and seed test data
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
+        run: |
+          npm run migrate
+          psql "$DATABASE_URL" -f packages/db/seeds/ceo-demo-data.sql
+
+      - name: Run security tests
+        run: npm run test:security
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/unified
+          REDIS_URL: redis://localhost:6379
+
+      - name: Security tests must pass
+        if: failure()
+        run: |
+          echo "❌ Security tests failed!"
+          echo "Multi-tenant isolation and RLS policies must be correct."
+          exit 1

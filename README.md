@@ -40,6 +40,7 @@ npm run dev:hr  # API only
 ## Access Points
 
 - **API**: http://localhost:3000/api/health
+- **API Ready Check**: http://localhost:3000/api/ready (alias: http://localhost:3000/api/health/ready)
 - **Web UI**: http://localhost:3001 (minimal health checker)
 - **Full Demo**: Use the API endpoints or run scripts
 

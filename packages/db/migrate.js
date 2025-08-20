@@ -62,48 +62,53 @@ async function runMigrations() {
     let client;
     let connected = false;
     
-    // Method 1: Connection string
+    // Method 1: Docker exec (most reliable for Windows)
     try {
-        client = new Client({ connectionString: DATABASE_URL });
+        const { execSync } = require('child_process');
+        execSync('docker exec hunters-run-postgres-1 psql -U postgres -d unified -c "SELECT 1"', { stdio: 'pipe' });
+        console.log('📊 Docker connection verified');
+        // Use regular connection now that we know Docker works
+        client = new Client({ 
+            host: 'localhost',
+            port: 5432,
+            database: 'unified',
+            user: 'postgres'
+            // No password for Docker postgres
+        });
         await client.connect();
         connected = true;
-        console.log('📊 Connected to database via connection string');
+        console.log('📊 Connected to database via Docker');
     } catch (error) {
-        console.log('Connection string failed, trying explicit parameters...');
+        console.log('Docker connection failed, trying connection string...');
         if (client) await client.end().catch(() => {});
     }
     
-    // Method 2: Explicit parameters
+    // Method 2: Connection string
     if (!connected) {
         try {
-            client = new Client({
-                host: 'localhost',
-                port: 5432,
-                database: 'unified',
-                user: 'postgres',
-                password: ''  // Try empty password for trust auth
-            });
+            client = new Client({ connectionString: DATABASE_URL });
             await client.connect();
             connected = true;
-            console.log('📊 Connected to database via explicit parameters (empty password)');
+            console.log('📊 Connected to database via connection string');
         } catch (error) {
+            console.log('Connection string failed, trying explicit parameters...');
             if (client) await client.end().catch(() => {});
         }
     }
     
-    // Method 3: With password
+    // Method 3: Explicit parameters (no password for Docker)
     if (!connected) {
         try {
             client = new Client({
                 host: 'localhost',
                 port: 5432,
                 database: 'unified',
-                user: 'postgres',
-                password: 'postgres'
+                user: 'postgres'
+                // No password - Docker postgres doesn't require one by default
             });
             await client.connect();
             connected = true;
-            console.log('📊 Connected to database via explicit parameters (with password)');
+            console.log('📊 Connected to database via explicit parameters (no password)');
         } catch (error) {
             console.error('❌ All connection methods failed');
             console.error('Please ensure Docker is running and database is accessible');

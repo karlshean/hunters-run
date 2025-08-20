@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException, UnprocessableEntityException, Logger } from '@nestjs/common';
 import { DatabaseService } from '../../common/database.service';
 import { StripeService } from '../../common/stripe.service';
+import { AuditService } from '../../common/audit.service';
 import { CreateCheckoutDto } from './dto/create-checkout.dto';
 
 export interface Charge {
@@ -42,7 +43,8 @@ export class PaymentsService {
 
   constructor(
     private readonly db: DatabaseService,
-    private readonly stripe: StripeService
+    private readonly stripe: StripeService,
+    private readonly auditService: AuditService
   ) {}
 
   async createCheckout(orgId: string, dto: CreateCheckoutDto): Promise<CheckoutResponse> {
@@ -115,20 +117,20 @@ export class PaymentsService {
 
       const paymentId = paymentResult.rows[0].id;
 
-      // Create audit event
-      await client.query(`
-        SELECT hr.create_audit_event($1, 'checkout_created', 'payment', $2, $3)
-      `, [
+      // Create H5 audit log entry
+      await this.auditService.log({
         orgId,
-        paymentId,
-        JSON.stringify({
+        action: 'payment.checkout_created',
+        entity: 'payment',
+        entityId: paymentId,
+        metadata: {
           sessionId: session.id,
           amountCents,
           currency: dto.currency || 'usd',
           tenantId: dto.tenantId,
           ...(chargeId && { chargeId })
-        })
-      ]);
+        }
+      });
 
       this.logger.log(`Checkout created: ${session.id} for $${amountCents / 100}`);
 
@@ -139,38 +141,134 @@ export class PaymentsService {
     });
   }
 
-  async processWebhook(orgId: string, event: any): Promise<void> {
-    return this.db.executeWithOrgContext(orgId, async (client) => {
-      // Check for duplicate webhook
-      const existingWebhook = await client.query(
-        'SELECT id FROM payments.webhook_events WHERE provider = $1 AND event_id = $2',
-        ['stripe', event.id]
-      );
+  async recordWebhookEvent(event: any): Promise<boolean> {
+    // Global webhook event recording (not org-scoped)
+    const client = await this.db.getClient();
+    try {
+      await client.query('BEGIN');
+      
+      // Upsert webhook event - if duplicate, return true without side effects
+      const result = await client.query(`
+        INSERT INTO payments.webhook_events (provider, event_id, received_at, payload)
+        VALUES ('stripe', $1, NOW(), $2)
+        ON CONFLICT (provider, event_id) DO NOTHING
+        RETURNING event_id
+      `, [event.id, JSON.stringify(event)]);
+      
+      await client.query('COMMIT');
+      
+      // If no rows returned, it was a duplicate
+      return result.rows.length === 0;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      await client.end();
+    }
+  }
 
-      if (existingWebhook.rows.length > 0) {
-        this.logger.log(`Ignoring duplicate webhook: ${event.id}`);
-        
-        // Emit audit event for duplicate
-        await client.query(`
-          SELECT hr.create_audit_event($1, 'webhook_ignored_duplicate', 'webhook', $2, $3)
-        `, [
-          orgId,
-          event.id,
-          JSON.stringify({ eventType: event.type, providerId: event.id })
-        ]);
-        
-        return;
+  async recordWebhookFailure(event: any, errorMessage: string, errorStack?: string): Promise<void> {
+    const client = await this.db.getClient();
+    try {
+      await client.query('BEGIN');
+      
+      await client.query(`
+        INSERT INTO payments.webhook_failures (provider, event_id, payload, error_message, error_stack, retry_count, created_at)
+        VALUES ('stripe', $1, $2, $3, $4, 0, NOW())
+        ON CONFLICT (provider, event_id) DO UPDATE SET
+          error_message = EXCLUDED.error_message,
+          error_stack = EXCLUDED.error_stack,
+          retry_count = webhook_failures.retry_count + 1,
+          last_retry_at = NOW()
+      `, [event.id, JSON.stringify(event), errorMessage, errorStack]);
+      
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      await client.end();
+    }
+  }
+
+  async retryWebhookFailure(failureId: string): Promise<{ success: boolean; message: string }> {
+    const client = await this.db.getClient();
+    try {
+      await client.query('BEGIN');
+      
+      // Get the failed webhook
+      const failureResult = await client.query(`
+        SELECT provider, event_id, payload, retry_count
+        FROM payments.webhook_failures 
+        WHERE id = $1
+      `, [failureId]);
+
+      if (failureResult.rows.length === 0) {
+        await client.query('ROLLBACK');
+        return { success: false, message: 'Webhook failure not found' };
       }
 
-      // Store webhook event
-      await client.query(`
-        INSERT INTO payments.webhook_events (organization_id, provider, event_id, type, raw)
-        VALUES ($1, 'stripe', $2, $3, $4)
-      `, [orgId, event.id, event.type, JSON.stringify(event)]);
+      const failure = failureResult.rows[0];
+      const event = JSON.parse(failure.payload);
 
+      // Extract org ID from event metadata
+      let orgId: string | undefined;
+      if (event.data?.object?.metadata?.organization_id) {
+        orgId = event.data.object.metadata.organization_id;
+      } else if (event.data?.object?.metadata?.orgId) {
+        orgId = event.data.object.metadata.orgId;
+      }
+
+      if (!orgId) {
+        await client.query('ROLLBACK');
+        return { success: false, message: 'Organization ID not found in webhook metadata' };
+      }
+
+      try {
+        // Process the webhook
+        await this.processWebhook(orgId, event);
+
+        // Update retry count on success
+        await client.query(`
+          UPDATE payments.webhook_failures 
+          SET retry_count = retry_count + 1, last_retry_at = NOW()
+          WHERE id = $1
+        `, [failureId]);
+
+        await client.query('COMMIT');
+
+        this.logger.log(`Successfully retried webhook failure ${failureId} for event ${event.id}`);
+        
+        return { success: true, message: 'Webhook retried successfully' };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        this.logger.error(`Webhook retry failed for ${failureId}: ${message}`);
+        
+        // Update retry count even on failure
+        await client.query(`
+          UPDATE payments.webhook_failures 
+          SET retry_count = retry_count + 1, last_retry_at = NOW()
+          WHERE id = $1
+        `, [failureId]);
+        
+        await client.query('COMMIT');
+        
+        return { success: false, message: `Retry failed: ${message}` };
+      }
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      await client.end();
+    }
+  }
+
+  async processWebhook(orgId: string, event: any): Promise<void> {
+    return this.db.executeWithOrgContext(orgId, async (client) => {
       if (event.type === 'checkout.session.completed') {
         await this.handleCheckoutCompleted(client, orgId, event.data.object);
       }
+      // Add more event type handlers as needed
     });
   }
 
@@ -196,18 +294,18 @@ export class PaymentsService {
       WHERE id = $1
     `, [payment.id]);
 
-    // Create audit event for payment received
-    await client.query(`
-      SELECT hr.create_audit_event($1, 'payment_received', 'payment', $2, $3)
-    `, [
+    // Create H5 audit log entry for payment received
+    await this.auditService.log({
       orgId,
-      payment.id,
-      JSON.stringify({
+      action: 'payment.received',
+      entity: 'payment',
+      entityId: payment.id,
+      metadata: {
         sessionId: session.id,
         amountCents: payment.amount_cents,
         tenantId: payment.tenant_id
-      })
-    ]);
+      }
+    });
 
     // Perform oldest-first allocation
     await this.allocatePayment(client, orgId, payment);
@@ -252,19 +350,20 @@ export class PaymentsService {
         WHERE id = $2
       `, [newStatus, charge.id]);
 
-      // Create audit event for allocation
-      await client.query(`
-        SELECT hr.create_audit_event($1, 'allocation_created', 'charge', $2, $3)
-      `, [
+      // Create H5 audit log entry for allocation
+      await this.auditService.log({
         orgId,
-        charge.id,
-        JSON.stringify({
+        action: 'allocation.created',
+        entity: 'allocation',
+        entityId: `${payment.id}-${charge.id}`, // Composite identifier for allocation
+        metadata: {
           paymentId: payment.id,
+          chargeId: charge.id,
           allocationAmount,
           newStatus,
           chargeDescription: charge.description
-        })
-      ]);
+        }
+      });
 
       remainingAmount -= allocationAmount;
 

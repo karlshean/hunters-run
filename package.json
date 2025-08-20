@@ -7,6 +7,7 @@
     "packages/*"
   ],
   "devDependencies": {
+    "@types/uuid": "^10.0.0",
     "concurrently": "^8.2.0"
   },
   "scripts": {
@@ -19,13 +20,26 @@
     "migrate": "node packages/db/migrate.js",
     "migrate:reset": "node packages/db/migrate.js --reset",
     "seed:local": "psql \"$DATABASE_URL\" -f packages/db/seeds/seed_local.sql && psql \"$DATABASE_URL\" -f packages/db/seeds/seed_payments.sql",
+    "seed": "cat packages/db/seeds/ceo-demo-data.sql | docker exec -i hunters-run-postgres-1 psql -U postgres -d unified",
     "openapi:generate": "npx ts-node scripts/generate-openapi.ts",
     "dev:stack": "docker compose up -d && npm run dev:hr",
     "dev:all": "docker compose up -d && concurrently -n api,web -c auto \"npm run dev:hr\" \"npm --workspace apps/hr-web run dev\"",
     "smoke": "node scripts/smoke.js",
     "test": "echo ok",
+    "test:security": "npm run -w apps/hr-api test -- --testPathPattern=security",
     "dev:web": "npm run -w apps/hr-web dev",
     "build:web": "npm run -w apps/hr-web build",
-    "test:web:e2e": "npm run -w apps/hr-web test:e2e"
+    "test:web:e2e": "npm run -w apps/hr-web test:e2e",
+    "ceo:validate": "powershell -ExecutionPolicy Bypass -File scripts/ceo-validate.ps1",
+    "ceo:validate:sh": "bash scripts/ceo-validate.sh",
+    "perf:smoke": "powershell -ExecutionPolicy Bypass -File scripts/run-perf-tests.ps1 -TestType smoke",
+    "perf:load": "powershell -ExecutionPolicy Bypass -File scripts/run-perf-tests.ps1 -TestType load",
+    "perf:all": "powershell -ExecutionPolicy Bypass -File scripts/run-perf-tests.ps1 -TestType both",
+    "chaos:redis": "powershell -ExecutionPolicy Bypass -File scripts/chaos.ps1 -Test redis-restart",
+    "chaos:postgres": "powershell -ExecutionPolicy Bypass -File scripts/chaos.ps1 -Test postgres-restart",
+    "chaos:all": "powershell -ExecutionPolicy Bypass -File scripts/chaos.ps1 -Test all"
+  },
+  "dependencies": {
+    "uuid": "^11.1.0"
   }
 }
