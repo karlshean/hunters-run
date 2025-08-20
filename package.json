@@ -22,6 +22,7 @@
     "seed:local": "psql \"$DATABASE_URL\" -f packages/db/seeds/seed_local.sql && psql \"$DATABASE_URL\" -f packages/db/seeds/seed_payments.sql",
     "seed": "cat packages/db/seeds/ceo-demo-data.sql | docker exec -i hunters-run-postgres-1 psql -U postgres -d unified",
     "openapi:generate": "npx ts-node scripts/generate-openapi.ts",
+    "db:photo:snapshot": "psql \"$DATABASE_URL\" -c \"SELECT * FROM hr.snapshot_work_order_photos();\"",
     "dev:stack": "docker compose up -d && npm run dev:hr",
     "dev:all": "docker compose up -d && concurrently -n api,web -c auto \"npm run dev:hr\" \"npm --workspace apps/hr-web run dev\"",
     "smoke": "node scripts/smoke.js",
@@ -41,7 +42,11 @@
     "ceo:seed-check": "ts-node ./scripts/seed-check.ts",
     "test:e2e": "npm run -w apps/hr-web test:e2e && npm run -w apps/hr-api test -- --testPathPattern=e2e",
     "typecheck": "npm run -w apps/hr-api build && npm run -w apps/hr-web build",
-    "lint": "echo 'Lint configuration pending'"
+    "lint": "echo 'Lint configuration pending'",
+    "verify:rollback-safety": "powershell -ExecutionPolicy Bypass -File scripts/verify-rollback-safety-simple.ps1",
+    "db:backup": "powershell -ExecutionPolicy Bypass -File scripts/db/backup.ps1",
+    "db:restore": "powershell -ExecutionPolicy Bypass -File scripts/db/restore.ps1",
+    "db:selfcheck": "powershell -ExecutionPolicy Bypass -File scripts/db/selfcheck.ps1"
   },
   "dependencies": {
     "uuid": "^11.1.0"

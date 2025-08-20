@@ -76,6 +76,35 @@ bash scripts/demo-payments.sh
 - **Multi-Tenant**: RLS policies for organization isolation
 - **Real-time**: WebSocket updates and status changes
 
+## Database Backup & Restore (Windows/PowerShell)
+
+Prereqs: PostgreSQL client tools on PATH (psql/pg_dump/pg_restore), and DATABASE_URL set.
+
+Set env:
+```powershell
+$env:DATABASE_URL = "postgres://user:pass@localhost:5432/hunters_run"
+```
+
+Create backup:
+```bash
+npm run db:backup
+```
+
+Restore latest backup (safe – refuses if DB not empty):
+```bash
+npm run db:restore
+```
+
+Force restore (destructive):
+```bash
+npm run db:restore -- -Force
+```
+
+Self-check (backup → drop marker → restore → verify):
+```bash
+npm run db:selfcheck
+```
+
 ## Port Reference
 
 - **3000**: API backend (all /api/* endpoints)
