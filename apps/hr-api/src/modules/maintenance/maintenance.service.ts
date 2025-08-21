@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnprocessableEntityException, BadRequestException } from '@nestjs/common';
 import { DatabaseService } from '../../common/database.service';
 import { AuditService } from '../../common/audit.service';
 import { FilesService } from '../files/files.service';
@@ -75,10 +75,10 @@ export class MaintenanceService {
     }
     
     return this.db.executeWithOrgContext(orgId, async (client) => {
-      // Verify unit and tenant exist
-      const unitCheck = await client.query('SELECT id FROM hr.units WHERE id = $1', [dto.unitId]);
+      // Verify unit exists and belongs to this organization
+      const unitCheck = await client.query('SELECT 1 FROM hr.units WHERE id = $1 AND organization_id = $2 LIMIT 1', [dto.unitId, orgId]);
       if (unitCheck.rows.length === 0) {
-        throw new NotFoundException('Unit not found');
+        throw new BadRequestException('Invalid unitId for this organization');
       }
 
       const tenantCheck = await client.query('SELECT id FROM hr.tenants WHERE id = $1', [dto.tenantId]);
@@ -157,10 +157,10 @@ export class MaintenanceService {
     }
     
     return this.db.executeWithOrgContext(orgId, async (client) => {
-      // Verify unit exists
-      const unitCheck = await client.query('SELECT id FROM hr.units WHERE id = $1', [dto.unitId]);
+      // Verify unit exists and belongs to this organization
+      const unitCheck = await client.query('SELECT 1 FROM hr.units WHERE id = $1 AND organization_id = $2 LIMIT 1', [dto.unitId, orgId]);
       if (unitCheck.rows.length === 0) {
-        throw new NotFoundException('Unit not found');
+        throw new BadRequestException('Invalid unitId for this organization');
       }
 
       const ticketId = this.generateTicketId();

@@ -3,8 +3,7 @@ import { DatabaseService } from '../../common/database.service';
 
 export interface Unit {
   id: string;
-  propertyId: string;
-  unitNumber: string;
+  name: string;
 }
 
 export interface Tenant {
@@ -31,20 +30,38 @@ export class LookupsService {
   constructor(private readonly db: DatabaseService) {}
 
   async getUnits(orgId: string): Promise<Unit[]> {
-    // Return seeded demo data for CEO validation
+    // Return seeded demo data for CEO validation - legacy unit
     if (orgId === '00000000-0000-4000-8000-000000000001') {
       return [{
         id: '00000000-0000-4000-8000-000000000003',
-        propertyId: '00000000-0000-4000-8000-000000000002',
-        unitNumber: '101'
+        name: '101'
       }];
     }
     return this.db.executeWithOrgContext(orgId, async (client) => {
       const result = await client.query(`
-        SELECT id, property_id as "propertyId", unit_number as "unitNumber"
+        SELECT id, unit_number as name
         FROM hr.units
         ORDER BY unit_number
       `);
+      return result.rows;
+    });
+  }
+
+  async listUnits(orgId: string): Promise<Array<{id: string; name: string}>> {
+    // Return demo data for CEO validation org - using new units
+    if (orgId === '00000000-0000-4000-8000-000000000001') {
+      return [
+        { id: '11111111-1111-1111-1111-111111111111', name: 'Unit 101' },
+        { id: '22222222-2222-2222-2222-222222222222', name: 'Unit 202' }
+      ];
+    }
+    return this.db.executeWithOrgContext(orgId, async (client) => {
+      const result = await client.query(`
+        SELECT id, name
+        FROM hr.units
+        WHERE organization_id = $1
+        ORDER BY name
+      `, [orgId]);
       return result.rows;
     });
   }

@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Photo Flow Tester</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 20px; }
+    .row { display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap; }
+    fieldset { border:1px solid #ddd; border-radius:8px; padding:16px; margin-bottom:16px }
+    legend { padding:0 6px; font-weight:600; }
+    label { display:block; margin:.5rem 0 .25rem; font-weight:600; }
+    select, input[type="text"], textarea, button { font-size:16px; padding:8px; width:100%; max-width:520px; }
+    textarea{ min-height:90px; }
+    img { max-width:240px; border:1px solid #eee; border-radius:8px; }
+    .ok{ color:#0b8f33; } .warn{ color:#c09400; } .err{ color:#b00020; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    #log { white-space: pre-wrap; background:#0b1020; color:#d6e1ff; padding:12px; border-radius:8px; max-height:320px; overflow:auto }
+  </style>
+</head>
+<body>
+  <h1>Photo Flow Tester</h1>
+  <p>This page calls your API + S3 directly. No build, no framework. Use it to verify the full flow end-to-end.</p>
+
+  <fieldset>
+    <legend>Config (change if needed)</legend>
+    <label>API Base URL</label>
+    <input id="apiBase" type="text" value="http://localhost:3000" />
+  </fieldset>
+
+  <fieldset>
+    <legend>1) Choose Unit & Describe Issue</legend>
+    <label>Unit</label>
+    <select id="unitSelect"></select>
+    <label>Description</label>
+    <textarea id="desc" placeholder="Example: Kitchen sink leaking under the cabinet."></textarea>
+  </fieldset>
+
+  <fieldset>
+    <legend>2) Pick a Photo</legend>
+    <div class="row">
+      <div>
+        <label>Image (≤5MB: jpg, png, webp)</label>
+        <input id="file" type="file" accept="image/jpeg,image/png,image/webp" />
+        <button id="uploadBtn" type="button">Upload + Create Work Order</button>
+      </div>
+      <div>
+        <label>Preview</label>
+        <img id="preview" alt="(no image yet)" />
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Result</legend>
+    <div id="result"></div>
+  </fieldset>
+
+  <fieldset>
+    <legend>Log</legend>
+    <div id="log" class="mono"></div>
+  </fieldset>
+
+<script>
+(function(){
+  // ---- endpoints (Claude created /api/lookups/units; keep as-is) ----
+  const IDs = {
+    units:   "/api/lookups/units",
+    presign: "/api/files/presign-photo",
+    create:  "/api/maintenance/work-orders",
+  };
+
+  const unitSelect = document.getElementById('unitSelect');
+  const desc       = document.getElementById('desc');
+  const fileInput  = document.getElementById('file');
+  const preview    = document.getElementById('preview');
+  const uploadBtn  = document.getElementById('uploadBtn');
+  const apiBaseEl  = document.getElementById('apiBase');
+  const logEl      = document.getElementById('log');
+  const resultEl   = document.getElementById('result');
+
+  function log(line, cls='') {
+    const prefix = cls==='err' ? '✖ ' : cls==='ok' ? '✔ ' : cls==='warn' ? '⚠ ' : '• ';
+    logEl.textContent += prefix + line + '\n';
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function assert(cond, msg) { if (!cond) throw new Error(msg); }
+
+  // Preview selected image
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files?.[0];
+    if (!f) return;
+    const url = URL.createObjectURL(f);
+    preview.src = url;
+  });
+
+  // Load units on start
+  async function loadUnits() {
+    const apiBase = apiBaseEl.value.trim().replace(/\/+$/,'');
+    log(`GET ${apiBase}${IDs.units}`);
+    const r = await fetch(apiBase + IDs.units);
+    assert(r.ok, `Units lookup failed (${r.status})`);
+    const data = await r.json();
+    assert(Array.isArray(data) && data.length, "No units returned");
+    unitSelect.innerHTML = data.map(u => `<option value="${u.id}">${u.name || u.label || u.id}</option>`).join('');
+    log(`Loaded ${data.length} unit(s)`, 'ok');
+  }
+
+  async function presignPhoto(file) {
+    const apiBase = apiBaseEl.value.trim().replace(/\/+$/,'');
+    const body = {
+      fileName: file.name,
+      mimeType: file.type,
+      fileSize: file.size
+    };
+    log(`POST ${apiBase}${IDs.presign}`);
+    const r = await fetch(apiBase + IDs.presign, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const json = await r.json().catch(()=> ({}));
+    assert(r.ok, `Presign failed (${r.status}): ${JSON.stringify(json)}`);
+    assert(json.url && json.fields && json.s3Key, 'Invalid presign response');
+    log(`Presign OK → key: ${json.s3Key}`, 'ok');
+    return json; // {url, fields, s3Key, expiresAt}
+  }
+
+  async function uploadToS3(presign, file) {
+    const form = new FormData();
+    // presigned POST requires you to include every returned field verbatim
+    Object.entries(presign.fields).forEach(([k,v]) => form.append(k, v));
+    form.append('file', file);
+    log(`S3 POST ${presign.url}`);
+    const r = await fetch(presign.url, { method: 'POST', body: form });
+    assert(r.ok, `S3 upload failed (${r.status})`);
+    const publicUrl = presign.url.replace(/\/$/,'') + '/' + presign.fields.key;
+    log(`S3 upload OK`, 'ok');
+    return { publicUrl };
+  }
+
+  async function createWorkOrder(unitId, description, photoUrl) {
+    const apiBase = apiBaseEl.value.trim().replace(/\/+$/,'');
+    const payload = { unitId, description, tenantPhotoUrl: photoUrl };
+    log(`POST ${apiBase}${IDs.create}`);
+    const r = await fetch(apiBase + IDs.create, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const json = await r.json().catch(()=> ({}));
+    assert(r.ok, `Create WO failed (${r.status}): ${JSON.stringify(json)}`);
+    assert(json.id || json.ticketId, 'Missing id/ticketId in response');
+    log(`Work order created`, 'ok');
+    return json; // expect { id, ticketId, ... }
+  }
+
+  uploadBtn.addEventListener('click', async () => {
+    resultEl.innerHTML = '';
+    try {
+      const unitId = unitSelect.value;
+      const description = desc.value.trim();
+      const file = fileInput.files?.[0];
+
+      assert(unitId, 'Pick a unit');
+      assert(description.length > 0, 'Add a short description');
+      assert(file, 'Choose a photo (jpg/png/webp)');
+
+      // 1) presign
+      const presign = await presignPhoto(file);
+      // 2) upload to S3
+      const { publicUrl } = await uploadToS3(presign, file);
+      // 3) create work order
+      const wo = await createWorkOrder(unitId, description, publicUrl);
+
+      resultEl.innerHTML = `
+        <p class="ok"><strong>Success!</strong> Ticket: <code class="mono">${wo.ticketId || wo.id}</code></p>
+        <p><a href="${publicUrl}" target="_blank" rel="noopener">Photo URL</a></p>
+      `;
+    } catch (e) {
+      log(String(e.message || e), 'err');
+      resultEl.innerHTML = `<p class="err"><strong>Failed:</strong> ${e.message || e}</p>`;
+    }
+  });
+
+  // kick off
+  function log(s,c){return (window._l=(window._l||[])).push({s,c}),appendLog({s,c});}
+  function appendLog({s,c}){const span=document.createElement('div');if(c)span.className=c;span.textContent=s;logEl.appendChild(span);logEl.scrollTop=logEl.scrollHeight;}
+  function init(){loadUnits().catch(e=>log(String(e.message||e),'err'));}
+  window.addEventListener('load', init);
+})();
+</script>
+</body>
+</html>

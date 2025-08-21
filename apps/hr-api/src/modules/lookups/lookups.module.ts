@@ -6,5 +6,6 @@ import { DatabaseService } from '../../common/database.service';
 @Module({
   controllers: [LookupsController],
   providers: [LookupsService, DatabaseService],
+  exports: [LookupsService],
 })
 export class LookupsModule {}

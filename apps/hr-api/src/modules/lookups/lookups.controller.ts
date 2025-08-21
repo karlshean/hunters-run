@@ -2,7 +2,8 @@ import {
   Controller, 
   Get, 
   UseInterceptors, 
-  Req 
+  Req,
+  BadRequestException
 } from '@nestjs/common';
 import { LookupsService } from './lookups.service';
 import { RLSInterceptor } from '../../common/rls.interceptor';
@@ -14,7 +15,10 @@ export class LookupsController {
 
   @Get('units')
   async getUnits(@Req() req: any) {
-    return this.lookupsService.getUnits(req.orgId);
+    if (!req.orgId) {
+      throw new BadRequestException('Missing organization ID in request headers');
+    }
+    return this.lookupsService.listUnits(req.orgId);
   }
 
   @Get('tenants')

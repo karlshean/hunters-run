@@ -21,11 +21,15 @@ import { ChangeStatusDto } from './dto/change-status.dto';
 import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { AttachEvidenceDto } from './dto/attach-evidence.dto';
 import { rejectPhotoMetadataIfDisabled } from '../../common/photo-guards';
+import { LookupsService } from '../lookups/lookups.service';
 
 @Controller('maintenance')
 @UseInterceptors(RLSInterceptor)
 export class MaintenanceController {
-  constructor(private readonly maintenanceService: MaintenanceService) {}
+  constructor(
+    private readonly maintenanceService: MaintenanceService,
+    private readonly lookupsService: LookupsService
+  ) {}
 
   @Post('work-orders')
   async createWorkOrder(@Req() req: any, @Body() dto: any) {
@@ -163,5 +167,13 @@ export class MaintenanceController {
   @Get('work-orders/:id/audit/validate')
   async validateAudit(@Req() req: any, @Param('id') id: string) {
     return this.maintenanceService.validateAuditChain(req.orgId, id);
+  }
+
+  @Get('lookups/units')
+  async getUnitsLookup(@Req() req: any) {
+    if (!req.orgId) {
+      throw new BadRequestException('Missing organization ID in request headers');
+    }
+    return this.lookupsService.listUnits(req.orgId);
   }
 }

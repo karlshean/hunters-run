@@ -81,4 +81,16 @@ ON CONFLICT (id) DO UPDATE SET
     due_date = EXCLUDED.due_date,
     updated_at = NOW();
 
+-- Add additional demo units for new hr.units table schema
+DO $$
+DECLARE 
+    v_org uuid := '00000000-0000-0000-0000-000000000001';
+BEGIN
+    INSERT INTO hr.units (id, organization_id, name)
+    VALUES
+        ('11111111-1111-1111-1111-111111111111', v_org, 'Unit 101'),
+        ('22222222-2222-2222-2222-222222222222', v_org, 'Unit 202')
+    ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name;
+END$$;
+
 COMMIT;
