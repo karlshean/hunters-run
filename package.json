@@ -50,7 +50,11 @@
     "db:backup": "powershell -ExecutionPolicy Bypass -File scripts/db/backup.ps1",
     "db:restore": "powershell -ExecutionPolicy Bypass -File scripts/db/restore.ps1",
     "db:selfcheck": "powershell -ExecutionPolicy Bypass -File scripts/db/selfcheck.ps1",
-    "selfcheck:supabase": "powershell -ExecutionPolicy Bypass -File scripts/selfcheck-supabase.ps1"
+    "selfcheck:supabase": "powershell -ExecutionPolicy Bypass -File scripts/selfcheck-supabase.ps1",
+    "supabase:oneclick": "powershell -ExecutionPolicy Bypass -File scripts/supabase-oneclick.ps1",
+    "supabase:up": "powershell -ExecutionPolicy Bypass -File scripts/supabase-up.ps1",
+    "selfcheck:iam": "powershell -ExecutionPolicy Bypass -File scripts/selfcheck-iam.ps1",
+    "selfcheck:workorders": "powershell -ExecutionPolicy Bypass -File scripts/selfcheck-workorders.ps1"
   },
   "dependencies": {
     "uuid": "^11.1.0"

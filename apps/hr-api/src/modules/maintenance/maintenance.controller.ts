@@ -16,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { MaintenanceService } from './maintenance.service';
 import { RLSInterceptor } from '../../common/rls.interceptor';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
+import { CreateWorkOrderSimpleDto } from './dto/create-work-order-simple.dto';
 import { ChangeStatusDto } from './dto/change-status.dto';
 import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { AttachEvidenceDto } from './dto/attach-evidence.dto';
@@ -27,7 +28,13 @@ export class MaintenanceController {
   constructor(private readonly maintenanceService: MaintenanceService) {}
 
   @Post('work-orders')
-  async createWorkOrder(@Req() req: any, @Body() dto: CreateWorkOrderDto) {
+  async createWorkOrder(@Req() req: any, @Body() dto: any) {
+    // Route to simple creation if it matches the simple DTO structure
+    if ('unitId' in dto && 'description' in dto && !('title' in dto) && !('priority' in dto)) {
+      return this.maintenanceService.createSimpleWorkOrder(req.orgId, dto as CreateWorkOrderSimpleDto);
+    }
+    
+    // Fall back to existing complex creation
     rejectPhotoMetadataIfDisabled(dto);
     
     // Stub for demo org (CEO validation)
@@ -51,7 +58,7 @@ export class MaintenanceController {
         updatedAt: new Date().toISOString()
       };
     }
-    return this.maintenanceService.createWorkOrder(req.orgId, dto);
+    return this.maintenanceService.createWorkOrder(req.orgId, dto as CreateWorkOrderDto);
   }
 
   @Post('photo')

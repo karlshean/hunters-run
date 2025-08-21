@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(timeout 10 npm run supabase:oneclick)",
+      "Bash(mkdir:*)",
+      "Bash($env:TENANT_PHOTO_FLOW_ENABLED=\"true\")",
+      "Bash($env:AWS_REGION=\"us-east-1\")",
+      "Bash($env:AWS_S3_BUCKET=\"test-bucket\")",
+      "Bash(export TENANT_PHOTO_FLOW_ENABLED=true)",
+      "Bash(export AWS_REGION=us-east-1)",
+      "Bash(export AWS_S3_BUCKET=test-bucket)",
+      "Bash(powershell:*)",
+      "Bash(curl:*)",
+      "Bash(taskkill:*)",
+      "Bash(git checkout:*)",
+      "Bash(grep:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

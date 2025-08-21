@@ -1,0 +1,11 @@
+{
+  "CORSRules": [
+    {
+      "AllowedHeaders": ["Content-Type","x-amz-acl","x-amz-meta-*"],
+      "AllowedMethods": ["POST"],
+      "AllowedOrigins": ["http://localhost:3004"],
+      "ExposeHeaders": [],
+      "MaxAgeSeconds": 3600
+    }
+  ]
+}

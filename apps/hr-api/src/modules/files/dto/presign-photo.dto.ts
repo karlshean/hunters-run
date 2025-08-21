@@ -1,18 +1,17 @@
-import { IsString, IsNotEmpty, IsNumber, Max, Min, IsIn } from 'class-validator';
+import { IsString, IsNumber, IsIn, Min, Max, IsNotEmpty } from 'class-validator';
+import { Type } from 'class-transformer';
+
+export const ALLOWED_MIME_TYPES = ['image/jpeg','image/png','image/webp'] as const;
+export type AllowedMime = typeof ALLOWED_MIME_TYPES[number];
 
 export class PresignPhotoDto {
-  @IsString()
-  @IsNotEmpty()
-  fileName: string;
+  @IsString() @IsNotEmpty()
+  fileName!: string;
 
-  @IsNumber()
-  @Min(1, { message: 'File size must be at least 1 byte' })
-  @Max(5 * 1024 * 1024, { message: 'File size cannot exceed 5MB' })
-  fileSize: number;
+  @IsString() @IsIn(ALLOWED_MIME_TYPES)
+  mimeType!: AllowedMime;
 
-  @IsString()
-  @IsIn(['image/jpeg', 'image/png', 'image/webp'], { 
-    message: 'Only JPEG, PNG, and WebP images are supported' 
-  })
-  mimeType: string;
+  @Type(() => Number)
+  @IsNumber() @Min(1) @Max(5 * 1024 * 1024)
+  fileSize!: number;
 }

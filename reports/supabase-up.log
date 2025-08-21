@@ -1,0 +1,72 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20250820172330
+Username: DESKTOP-BAMDQDC\KA
+RunAs User: DESKTOP-BAMDQDC\KA
+Configuration Name: 
+Machine: DESKTOP-BAMDQDC (Microsoft Windows NT 10.0.26100.0)
+Host Application: powershell -ExecutionPolicy Bypass -File scripts/supabase-up.ps1
+Process ID: 1404
+PSVersion: 5.1.26100.4768
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.4768
+BuildVersion: 10.0.26100.4768
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is reports/supabase-up.log
+INFO: Supabase Up Started at 2025-08-20 17:23:30
+INFO: Logging to: reports/supabase-up.log
+STEP: Step 1/5: Validating Database Configuration
+ERROR: Supabase up failed: DATABASE_URL environment variable is not set. Please set it to your Supabase connection string or use 'npm run supabase:oneclick' for guided setup.
+
+Troubleshooting:
+   1. Ensure DATABASE_URL is set correctly
+   2. Check your Supabase project allows connections
+   3. Verify dependencies are installed (npm install)
+   4. Check the full log at: reports/supabase-up.log
+
+For guided setup, run: npm run supabase:oneclick
+
+**********************
+Windows PowerShell transcript end
+End time: 20250820172330
+**********************
+**********************
+Windows PowerShell transcript start
+Start time: 20250820172736
+Username: DESKTOP-BAMDQDC\KA
+RunAs User: DESKTOP-BAMDQDC\KA
+Configuration Name: 
+Machine: DESKTOP-BAMDQDC (Microsoft Windows NT 10.0.26100.0)
+Host Application: powershell -ExecutionPolicy Bypass -File scripts/supabase-up.ps1
+Process ID: 26368
+PSVersion: 5.1.26100.4768
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.4768
+BuildVersion: 10.0.26100.4768
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is reports/supabase-up.log
+INFO: Supabase Up Started at 2025-08-20 17:27:36
+INFO: Logging to: reports/supabase-up.log
+STEP: Step 1/5: Validating Database Configuration
+ERROR: Supabase up failed: DATABASE_URL environment variable is not set. Please set it to your Supabase connection string or use 'npm run supabase:oneclick' for guided setup.
+
+Troubleshooting:
+   1. Ensure DATABASE_URL is set correctly
+   2. Check your Supabase project allows connections
+   3. Verify dependencies are installed (npm install)
+   4. Check the full log at: reports/supabase-up.log
+
+For guided setup, run: npm run supabase:oneclick
+
+**********************
+Windows PowerShell transcript end
+End time: 20250820172736
+**********************

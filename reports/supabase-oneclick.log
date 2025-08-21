@@ -1,0 +1,117 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20250820172349
+Username: DESKTOP-BAMDQDC\KA
+RunAs User: DESKTOP-BAMDQDC\KA
+Configuration Name: 
+Machine: DESKTOP-BAMDQDC (Microsoft Windows NT 10.0.26100.0)
+Host Application: powershell -ExecutionPolicy Bypass -File scripts/supabase-oneclick.ps1
+Process ID: 14784
+PSVersion: 5.1.26100.4768
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.4768
+BuildVersion: 10.0.26100.4768
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is reports/supabase-oneclick.log
+INFO: Supabase One-Click Setup Started at 2025-08-20 17:23:49
+INFO: Logging to: reports/supabase-oneclick.log
+STEP: Step 1/7: Database URL Configuration
+INFO: DATABASE_URL environment variable not set
+
+Please paste your Supabase connection string:
+Format: postgres://postgres:[password]@db.[project-ref].supabase.co:5432/postgres?sslmode=require
+
+ERROR: Setup failed at step: No connection string provided
+
+Troubleshooting:
+   1. Check your Supabase connection string format
+   2. Ensure your Supabase project allows connections
+   3. Verify you have npm and Node.js installed
+   4. Check the full log at: reports/supabase-oneclick.log
+
+**********************
+Windows PowerShell transcript end
+End time: 20250820172358
+**********************
+**********************
+Windows PowerShell transcript start
+Start time: 20250820172749
+Username: DESKTOP-BAMDQDC\KA
+RunAs User: DESKTOP-BAMDQDC\KA
+Configuration Name: 
+Machine: DESKTOP-BAMDQDC (Microsoft Windows NT 10.0.26100.0)
+Host Application: powershell -ExecutionPolicy Bypass -File scripts/supabase-oneclick.ps1
+Process ID: 12120
+PSVersion: 5.1.26100.4768
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.4768
+BuildVersion: 10.0.26100.4768
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is reports/supabase-oneclick.log
+INFO: Supabase One-Click Setup Started at 2025-08-20 17:27:49
+INFO: Logging to: reports/supabase-oneclick.log
+STEP: Step 1/7: Database URL Configuration
+INFO: DATABASE_URL environment variable not set
+
+Please paste your Supabase connection string:
+Format: postgres://postgres:[password]@db.[project-ref].supabase.co:5432/postgres?sslmode=require
+
+ERROR: Setup failed at step: Connection string must contain 'sslmode=require' for secure Supabase connection
+
+Troubleshooting:
+   1. Check your Supabase connection string format
+   2. Ensure your Supabase project allows connections
+   3. Verify you have npm and Node.js installed
+   4. Check the full log at: reports/supabase-oneclick.log
+
+**********************
+Windows PowerShell transcript end
+End time: 20250820172831
+**********************
+**********************
+Windows PowerShell transcript start
+Start time: 20250820172855
+Username: DESKTOP-BAMDQDC\KA
+RunAs User: DESKTOP-BAMDQDC\KA
+Configuration Name: 
+Machine: DESKTOP-BAMDQDC (Microsoft Windows NT 10.0.26100.0)
+Host Application: powershell -ExecutionPolicy Bypass -File scripts/supabase-oneclick.ps1
+Process ID: 6704
+PSVersion: 5.1.26100.4768
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.4768
+BuildVersion: 10.0.26100.4768
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is reports/supabase-oneclick.log
+INFO: Supabase One-Click Setup Started at 2025-08-20 17:28:55
+INFO: Logging to: reports/supabase-oneclick.log
+STEP: Step 1/7: Database URL Configuration
+INFO: DATABASE_URL environment variable not set
+
+Please paste your Supabase connection string:
+Format: postgres://postgres:[password]@db.[project-ref].supabase.co:5432/postgres?sslmode=require
+
+ERROR: Setup failed at step: Connection string must contain 'sslmode=require' for secure Supabase connection
+
+Troubleshooting:
+   1. Check your Supabase connection string format
+   2. Ensure your Supabase project allows connections
+   3. Verify you have npm and Node.js installed
+   4. Check the full log at: reports/supabase-oneclick.log
+
+**********************
+Windows PowerShell transcript end
+End time: 20250820173008
+**********************

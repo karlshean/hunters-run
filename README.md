@@ -8,6 +8,35 @@ Complete maintenance and payments management with audit trails, RLS security, an
 
 ## How to Run
 
+### 🚀 60-Second Supabase Quickstart
+
+**The fastest way to get Hunters Run running with zero local database setup:**
+
+1. **Get your Supabase connection string**
+   - Create a project at https://supabase.com
+   - Go to Settings > Database
+   - Copy the connection string (starts with `postgres://postgres:...`)
+
+2. **Run one command:**
+   ```bash
+   npm run supabase:oneclick
+   ```
+   
+3. **Paste your connection string when prompted and wait for the green ✅**
+
+**That's it!** Your app will be running on:
+- **API**: http://localhost:3000/api/health  
+- **Web**: http://localhost:3001
+
+The script automatically:
+- ✅ Validates your connection string
+- ✅ Updates `.env` configuration  
+- ✅ Installs dependencies
+- ✅ Runs database migrations
+- ✅ Seeds demo data
+- ✅ Starts API + Web servers
+- ✅ Validates with CEO requirements
+
 ### Option 1: Local Development (Docker)
 
 ```bash
@@ -55,15 +84,22 @@ npm run dev:all
 # Docker: API only
 npm run dev:stack
 
-# Supabase: Run against existing Supabase setup  
-npm run dev:supabase
+# Supabase: Run against existing DATABASE_URL (no prompts)
+npm run supabase:up
 
-# Local: Manual setup (if needed)
+# Supabase: Manual setup (if needed)
 cp .env.example .env
 npm install
-docker compose up -d  # Only for local/Docker option
-npm run migrate       # Use migrate:supabase for Supabase
-npm run seed:local    # Use seed:supabase for Supabase
+npm run migrate:supabase
+npm run seed:supabase
+npm run dev:supabase
+
+# Local Docker: Manual setup (if needed)
+cp .env.example .env
+npm install
+docker compose up -d
+npm run migrate
+npm run seed:local
 npm run dev:hr        # API only
 ```
 
