@@ -418,28 +418,65 @@ function compressImage(file, maxWidth = 1920, quality = 0.8, maxSizeMB = 2) {
 
 // Photo upload functions
 async function presignPhoto(fileName, mimeType, fileSize) {
-  return apiCall('POST', '/api/files/presign-photo', {
-    fileName,
-    mimeType, 
-    fileSize
-  });
+  console.log('📞 Calling presign API with:', { fileName, mimeType, fileSize });
+  try {
+    const result = await apiCall('POST', '/api/files/presign-photo', {
+      fileName,
+      mimeType, 
+      fileSize
+    });
+    console.log('✅ Presign API response:', result);
+    return result;
+  } catch (error) {
+    console.error('❌ Presign API failed:', error);
+    throw error;
+  }
 }
 
 async function uploadToS3(url, fields, file) {
+  console.log('🔄 Starting S3 upload to:', url);
+  console.log('📝 Fields:', fields);
+  console.log('📁 File:', file.name, file.size, file.type);
+  
   const formData = new FormData();
-  Object.entries(fields).forEach(([key, value]) => {
+  
+  // Append fields in correct order (key should be last before file)
+  const fieldEntries = Object.entries(fields);
+  const keyField = fieldEntries.find(([k]) => k === 'key' || k === 'Key');
+  const otherFields = fieldEntries.filter(([k]) => k !== 'key' && k !== 'Key');
+  
+  // Add other fields first
+  otherFields.forEach(([key, value]) => {
+    console.log(`Adding field: ${key} = ${value}`);
     formData.append(key, value);
   });
+  
+  // Add key field
+  if (keyField) {
+    console.log(`Adding key field: ${keyField[0]} = ${keyField[1]}`);
+    formData.append(keyField[0], keyField[1]);
+  }
+  
+  // Add file last
   formData.append('file', file);
+  console.log('📤 FormData prepared, sending request...');
   
   const response = await fetch(url, {
     method: 'POST',
-    body: formData
+    body: formData,
+    mode: 'cors'
   });
   
+  console.log('📥 S3 response status:', response.status);
+  console.log('📥 S3 response headers:', [...response.headers.entries()]);
+  
   if (!response.ok) {
-    throw new Error(`S3 upload failed: ${response.status}`);
+    const responseText = await response.text();
+    console.error('❌ S3 upload failed:', response.status, responseText);
+    throw new Error(`S3 upload failed: ${response.status} - ${responseText}`);
   }
+  
+  console.log('✅ S3 upload successful!');
 }
 
 async function handlePhotoUpload(file) {
@@ -453,11 +490,13 @@ async function handlePhotoUpload(file) {
     $photoInfo.textContent = 'Getting upload URL...';
     
     // Get presigned URL
+    console.log('🔗 Getting presigned URL for:', compressed.name, compressed.type, compressed.size);
     const presignData = await presignPhoto(compressed.name, compressed.type, compressed.size);
+    console.log('✅ Got presigned data:', presignData);
     
     $photoInfo.textContent = 'Uploading to storage...';
     
-    // Upload to S3 (mock)
+    // Upload to S3
     await uploadToS3(presignData.url, presignData.fields, compressed);
     
     // Store metadata
