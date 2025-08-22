@@ -1,0 +1,712 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Add Photo Evidence - Work Order</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body { 
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
+      max-width: 480px;
+      width: 100%;
+      overflow: hidden;
+      animation: slideIn 0.4s ease-out;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .header {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .success-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      animation: bounceIn 0.6s ease-out 0.2s both;
+    }
+
+    @keyframes bounceIn {
+      0% { opacity: 0; transform: scale(0.3); }
+      50% { transform: scale(1.05); }
+      70% { transform: scale(0.9); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+
+    .title {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 32px 24px;
+    }
+
+    .explanation {
+      text-align: center;
+      margin-bottom: 32px;
+      color: #6b7280;
+      font-size: 16px;
+      line-height: 1.5;
+    }
+
+    .org-config {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+    }
+
+    .org-config label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+
+    .org-config input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: monospace;
+    }
+
+    .photo-section {
+      border: 2px dashed #d1d5db;
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 24px;
+      transition: all 0.3s ease;
+    }
+
+    .photo-section.uploading {
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+
+    .photo-section.success {
+      border-color: #10b981;
+      background: #ecfdf5;
+      border-style: solid;
+    }
+
+    .photo-section.error {
+      border-color: #ef4444;
+      background: #fef2f2;
+    }
+
+    .photo-buttons {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .photo-buttons button {
+      flex: 1;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: #3b82f6;
+      color: white;
+    }
+
+    .photo-buttons button:hover:not(:disabled) {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    .photo-buttons button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .photo-preview {
+      max-width: 100%;
+      max-height: 200px;
+      border-radius: 8px;
+      margin: 16px 0;
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+
+    .status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .status-indicator.uploading {
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+
+    .status-indicator.attaching {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    .status-indicator.success {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-indicator.error {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid currentColor;
+      border-top: 2px solid transparent;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: #10b981;
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #059669;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #d1d5db;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #e5e7eb;
+      transform: translateY(-1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .error-message {
+      color: #dc2626;
+      font-size: 14px;
+      margin-top: 12px;
+      padding: 12px;
+      background: #fef2f2;
+      border-radius: 6px;
+      border-left: 4px solid #ef4444;
+    }
+
+    .thanks-screen {
+      display: none;
+      text-align: center;
+      padding: 40px 0;
+    }
+
+    .thanks-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+      animation: bounceIn 0.6s ease-out;
+    }
+
+    .thanks-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 8px;
+    }
+
+    .thanks-message {
+      font-size: 18px;
+      color: #6b7280;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 12px;
+      }
+      
+      .container {
+        border-radius: 12px;
+      }
+      
+      .content {
+        padding: 24px 20px;
+      }
+      
+      .photo-buttons {
+        flex-direction: column;
+      }
+      
+      .actions {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="success-icon">✅</div>
+      <div class="title" id="ticket-title">Ticket Submitted</div>
+      <div class="subtitle">Your maintenance request has been received</div>
+    </div>
+
+    <div class="content">
+      <div class="main-content" id="main-content">
+        <div class="explanation">
+          Photos help us resolve issues faster and more accurately. Would you like to add a photo?
+        </div>
+
+        <div class="org-config">
+          <label>Organization ID</label>
+          <input type="text" id="org-input" placeholder="00000000-0000-4000-8000-000000000001" />
+        </div>
+
+        <div class="photo-section" id="photo-section">
+          <div class="photo-buttons">
+            <button type="button" id="camera-btn">📷 Use Camera</button>
+            <button type="button" id="file-btn">📁 Choose File</button>
+          </div>
+          <input type="file" id="file-input" class="file-input" accept="image/*" capture="environment">
+          <div id="photo-preview-container"></div>
+          <div class="status-indicator" id="status-indicator" style="display: none;">
+            Ready to upload
+          </div>
+          <div class="error-message" id="error-message" style="display: none;"></div>
+        </div>
+
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="upload-btn" disabled>Upload Photo</button>
+          <button type="button" class="btn btn-secondary" id="skip-btn">Skip for now</button>
+        </div>
+      </div>
+
+      <div class="thanks-screen" id="thanks-screen">
+        <div class="thanks-icon">🎉</div>
+        <div class="thanks-title">All Done!</div>
+        <div class="thanks-message">Thank you for submitting your maintenance request.</div>
+        <div class="actions">
+          <a href="/demo.html" class="btn btn-primary">Submit Another Request</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API = 'http://localhost:3000';
+
+// DOM elements
+const $orgInput = document.getElementById('org-input');
+const $cameraBtn = document.getElementById('camera-btn');
+const $fileBtn = document.getElementById('file-btn');
+const $fileInput = document.getElementById('file-input');
+const $photoSection = document.getElementById('photo-section');
+const $photoPreviewContainer = document.getElementById('photo-preview-container');
+const $statusIndicator = document.getElementById('status-indicator');
+const $errorMessage = document.getElementById('error-message');
+const $uploadBtn = document.getElementById('upload-btn');
+const $skipBtn = document.getElementById('skip-btn');
+const $mainContent = document.getElementById('main-content');
+const $thanksScreen = document.getElementById('thanks-screen');
+const $ticketTitle = document.getElementById('ticket-title');
+
+// State
+let currentPhoto = null;
+let photoMetadata = null;
+let workOrderId = null;
+let ticketId = null;
+
+// Initialize
+function initialize() {
+  const urlParams = new URLSearchParams(window.location.search);
+  workOrderId = urlParams.get('workOrderId');
+  ticketId = urlParams.get('ticketId');
+  
+  if (!workOrderId || !ticketId) {
+    showError('Missing workOrderId or ticketId in URL parameters');
+    return;
+  }
+  
+  $ticketTitle.textContent = `Ticket ${ticketId} submitted`;
+  
+  // Load org ID from localStorage
+  const savedOrgId = localStorage.getItem('orgId') || '00000000-0000-4000-8000-000000000001';
+  $orgInput.value = savedOrgId;
+  
+  // Save org ID when changed
+  $orgInput.addEventListener('input', () => {
+    localStorage.setItem('orgId', $orgInput.value);
+  });
+}
+
+// Utility functions
+function showStatus(message, type = 'uploading') {
+  $statusIndicator.className = `status-indicator ${type}`;
+  $statusIndicator.innerHTML = type === 'uploading' || type === 'attaching' ? 
+    `<span class="loading-spinner"></span> ${message}` : message;
+  $statusIndicator.style.display = 'inline-flex';
+  
+  $photoSection.className = `photo-section ${type}`;
+}
+
+function hideStatus() {
+  $statusIndicator.style.display = 'none';
+  $photoSection.className = 'photo-section';
+}
+
+function showError(message) {
+  $errorMessage.textContent = message;
+  $errorMessage.style.display = 'block';
+  $photoSection.className = 'photo-section error';
+  hideStatus();
+}
+
+function hideError() {
+  $errorMessage.style.display = 'none';
+}
+
+function showThanks() {
+  $mainContent.style.display = 'none';
+  $thanksScreen.style.display = 'block';
+}
+
+// Image compression
+function compressImage(file, maxWidth = 1920, quality = 0.8, maxSizeMB = 2) {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      let attempts = 0;
+      const tryCompress = (currentQuality) => {
+        attempts++;
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Compression failed'));
+              return;
+            }
+            
+            const sizeMB = blob.size / (1024 * 1024);
+            if (sizeMB <= maxSizeMB || attempts >= 3 || currentQuality <= 0.1) {
+              resolve(new File([blob], file.name, { type: blob.type }));
+            } else {
+              tryCompress(currentQuality - 0.1);
+            }
+          },
+          file.type,
+          currentQuality
+        );
+      };
+      
+      tryCompress(quality);
+    };
+    
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// API functions
+async function apiCall(method, path, body = null) {
+  const options = {
+    method,
+    headers: { 'x-org-id': $orgInput.value },
+    mode: 'cors'
+  };
+  
+  if (body) {
+    if (body instanceof FormData) {
+      options.body = body;
+    } else {
+      options.headers['Content-Type'] = 'application/json';
+      options.body = JSON.stringify(body);
+    }
+  }
+  
+  const res = await fetch(API + path, options);
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`${method} ${path} failed: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+async function presignPhoto(fileName, mimeType, fileSize) {
+  return apiCall('POST', '/api/files/presign-photo', {
+    fileName,
+    mimeType,
+    fileSize
+  });
+}
+
+async function uploadToS3(url, fields, file) {
+  const formData = new FormData();
+  Object.entries(fields).forEach(([key, value]) => {
+    formData.append(key, value);
+  });
+  formData.append('file', file);
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    body: formData
+  });
+  
+  if (!response.ok) {
+    throw new Error(`S3 upload failed: ${response.status}`);
+  }
+}
+
+async function attachEvidence(workOrderId, photoMetadata) {
+  return apiCall('POST', `/api/maintenance/work-orders/${workOrderId}/evidence`, {
+    photoMetadata
+  });
+}
+
+// Photo handling
+async function handlePhotoSelection(file) {
+  try {
+    hideError();
+    showStatus('Compressing image...', 'uploading');
+    
+    // Compress image
+    const compressed = await compressImage(file);
+    const sizeMB = (compressed.size / (1024 * 1024)).toFixed(2);
+    
+    // Store photo data
+    currentPhoto = compressed;
+    photoMetadata = {
+      s3Key: null, // Will be set after upload
+      mimeType: compressed.type,
+      sizeBytes: compressed.size
+    };
+    
+    // Show preview
+    const preview = document.createElement('img');
+    preview.src = URL.createObjectURL(compressed);
+    preview.className = 'photo-preview';
+    preview.alt = 'Photo preview';
+    
+    $photoPreviewContainer.innerHTML = '';
+    $photoPreviewContainer.appendChild(preview);
+    
+    showStatus(`Photo ready (${sizeMB}MB)`, 'success');
+    $uploadBtn.disabled = false;
+    
+  } catch (error) {
+    console.error('Photo processing failed:', error);
+    showError(`Photo processing failed: ${error.message}`);
+    currentPhoto = null;
+    photoMetadata = null;
+    $uploadBtn.disabled = true;
+  }
+}
+
+async function uploadPhoto() {
+  if (!currentPhoto || !photoMetadata) {
+    showError('No photo selected');
+    return;
+  }
+  
+  try {
+    $uploadBtn.disabled = true;
+    $skipBtn.disabled = true;
+    
+    hideError();
+    showStatus('Getting upload URL...', 'uploading');
+    
+    // Get presigned URL
+    const presignData = await presignPhoto(
+      currentPhoto.name, 
+      currentPhoto.type, 
+      currentPhoto.size
+    );
+    
+    showStatus('Uploading to storage...', 'uploading');
+    
+    // Upload to S3
+    await uploadToS3(presignData.url, presignData.fields, currentPhoto);
+    
+    // Update metadata with S3 key
+    photoMetadata.s3Key = presignData.s3Key;
+    
+    showStatus('Attaching to work order...', 'attaching');
+    
+    // Attach evidence to work order
+    await attachEvidence(workOrderId, photoMetadata);
+    
+    showStatus('✅ Photo attached successfully!', 'success');
+    
+    // Show thanks screen after a brief delay
+    setTimeout(() => {
+      showThanks();
+    }, 1500);
+    
+  } catch (error) {
+    console.error('Upload failed:', error);
+    showError(`Upload failed: ${error.message}. You can try again.`);
+    $uploadBtn.disabled = false;
+    $skipBtn.disabled = false;
+  }
+}
+
+// Event listeners
+$cameraBtn.addEventListener('click', async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'environment' } 
+    });
+    
+    // Create video element for capture
+    const video = document.createElement('video');
+    video.autoplay = true;
+    video.style.cssText = 'max-width: 100%; border-radius: 8px; margin: 16px 0;';
+    
+    const captureBtn = document.createElement('button');
+    captureBtn.type = 'button';
+    captureBtn.className = 'btn btn-primary';
+    captureBtn.textContent = 'Capture Photo';
+    captureBtn.style.marginTop = '12px';
+    
+    $photoPreviewContainer.innerHTML = '';
+    $photoPreviewContainer.appendChild(video);
+    $photoPreviewContainer.appendChild(captureBtn);
+    
+    video.srcObject = stream;
+    showStatus('Position camera and click capture');
+    
+    captureBtn.onclick = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      
+      stream.getTracks().forEach(track => track.stop());
+      
+      canvas.toBlob((blob) => {
+        const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
+        handlePhotoSelection(file);
+      }, 'image/jpeg', 0.8);
+    };
+    
+  } catch (error) {
+    console.error('Camera access failed:', error);
+    showError('Camera not available. Please use file upload instead.');
+  }
+});
+
+$fileBtn.addEventListener('click', () => {
+  $fileInput.click();
+});
+
+$fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    handlePhotoSelection(file);
+  }
+});
+
+$uploadBtn.addEventListener('click', uploadPhoto);
+
+$skipBtn.addEventListener('click', () => {
+  showThanks();
+});
+
+// Initialize the page
+initialize();
+</script>
+
+</body>
+</html>

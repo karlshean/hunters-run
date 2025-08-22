@@ -20,7 +20,9 @@
       "Bash(docker compose:*)",
       "Bash(timeout:*)",
       "Bash(npx http-server:*)",
-      "Bash(set ORG=\"00000000-0000-4000-8000-000000000001\")"
+      "Bash(set ORG=\"00000000-0000-4000-8000-000000000001\")",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
