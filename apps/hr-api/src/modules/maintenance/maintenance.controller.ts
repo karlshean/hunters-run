@@ -19,11 +19,14 @@ import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { ChangeStatusDto } from './dto/change-status.dto';
 import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { AttachEvidenceDto } from './dto/attach-evidence.dto';
+import { AttachPhotoEvidenceDto } from './dto/attach-photo-evidence.dto';
 import { LookupsService } from '../lookups/lookups.service';
 
 @Controller('maintenance')
 @UseInterceptors(RLSInterceptor)
 export class MaintenanceController {
+  // In-memory storage for demo work orders
+  private static demoWorkOrders: Map<string, any> = new Map();
   constructor(
     private readonly maintenanceService: MaintenanceService,
     private readonly lookupsService: LookupsService
@@ -42,14 +45,34 @@ export class MaintenanceController {
       const year = new Date().getFullYear();
       const sequence = Math.floor(Math.random() * 9999) + 1;
       const ticketId = `WO-${year}-${sequence.toString().padStart(4, '0')}`;
+      const createdAt = new Date().toISOString();
+      
+      const unitName = dto.unitId === '00000000-0000-4000-8000-000000000003' ? 'Unit 101' : 'Unit 202';
+      
+      const workOrder = {
+        id: workOrderId,
+        ticketId,
+        unitId: dto.unitId,
+        unitName,
+        description: dto.description,
+        status: 'open',
+        createdAt,
+        photo_attached: !!(dto.photoMetadata || dto.tenantPhotoUrl),
+        ...(dto.tenantPhotoUrl && { tenantPhotoUrl: dto.tenantPhotoUrl }),
+        ...(dto.photoMetadata && { photoMetadata: dto.photoMetadata })
+      };
+      
+      MaintenanceController.demoWorkOrders.set(workOrderId, workOrder);
       
       return {
         id: workOrderId,
         ticketId,
         unitId: dto.unitId,
         status: 'open',
-        createdAt: new Date().toISOString(),
-        ...(dto.tenantPhotoUrl && { tenantPhotoUrl: dto.tenantPhotoUrl })
+        createdAt,
+        photo_attached: !!(dto.photoMetadata || dto.tenantPhotoUrl),
+        ...(dto.tenantPhotoUrl && { tenantPhotoUrl: dto.tenantPhotoUrl }),
+        ...(dto.photoMetadata && { photoMetadata: dto.photoMetadata })
       };
     }
     
@@ -73,6 +96,23 @@ export class MaintenanceController {
       size: file.size,
       mimeType: file.mimetype
     };
+  }
+
+  @Get('work-orders')
+  async listWorkOrders(@Req() req: any) {
+    if (!req.orgId) {
+      throw new BadRequestException('Missing organization ID in request headers');
+    }
+    
+    // Stub for demo org
+    if (req.orgId === '00000000-0000-4000-8000-000000000001') {
+      const orders = Array.from(MaintenanceController.demoWorkOrders.values())
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 50);
+      return orders;
+    }
+    
+    return this.maintenanceService.listWorkOrders(req.orgId);
   }
 
   @Get('work-orders/:id')
@@ -101,28 +141,32 @@ export class MaintenanceController {
   }
 
   @Patch('work-orders/:id/status')
-  async changeStatus(@Req() req: any, @Param('id') id: string, @Body() dto: ChangeStatusDto) {
-    // Stub for demo org (CEO validation)
-    if (req.orgId === '00000000-0000-4000-8000-000000000001') {
-      const year = new Date().getFullYear();
-      const sequence = Math.floor(Math.random() * 9999) + 1;
-      const ticketId = `WO-${year}-${sequence.toString().padStart(4, '0')}`;
-      
-      return {
-        id: id,
-        ticketId,
-        unitId: '00000000-0000-4000-8000-000000000003',
-        tenantId: '00000000-0000-4000-8000-000000000004',
-        title: 'CEO Test Work Order',
-        description: 'Auto-generated for demo',
-        priority: 'normal',
-        status: dto.toStatus,
-        assignedTechId: '00000000-0000-4000-8000-000000000005',
-        createdAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(), // 10 mins ago
-        updatedAt: new Date().toISOString()
-      };
+  async changeStatus(@Req() req: any, @Param('id') id: string, @Body() dto: { status: string }) {
+    if (!req.orgId) {
+      throw new BadRequestException('Missing organization ID in request headers');
     }
-    return this.maintenanceService.changeStatus(req.orgId, id, dto);
+    
+    // For demo, only accept 'completed' status
+    if (dto.status !== 'completed') {
+      throw new BadRequestException('Only "completed" status is supported in this demo');
+    }
+    
+    // Stub for demo org
+    if (req.orgId === '00000000-0000-4000-8000-000000000001') {
+      const workOrder = MaintenanceController.demoWorkOrders.get(id);
+      if (workOrder) {
+        workOrder.status = 'completed';
+        MaintenanceController.demoWorkOrders.set(id, workOrder);
+        return {
+          id,
+          ticketId: workOrder.ticketId,
+          status: 'completed'
+        };
+      }
+      throw new BadRequestException('Work order not found');
+    }
+    
+    return this.maintenanceService.updateStatusToCompleted(req.orgId, id);
   }
 
   @Post('work-orders/:id/assign')
@@ -151,6 +195,16 @@ export class MaintenanceController {
   }
 
   @Post('work-orders/:id/evidence')
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async attachPhotoEvidence(@Req() req: any, @Param('id') id: string, @Body() dto: AttachPhotoEvidenceDto) {
+    if (!req.orgId) {
+      throw new BadRequestException('Missing organization ID in request headers');
+    }
+    
+    return this.maintenanceService.attachPhotoEvidence(req.orgId, id, dto);
+  }
+
+  @Post('work-orders/:id/legacy-evidence')
   async attachEvidence(@Req() req: any, @Param('id') id: string, @Body() dto: AttachEvidenceDto) {
     return this.maintenanceService.attachEvidence(req.orgId, id, dto);
   }

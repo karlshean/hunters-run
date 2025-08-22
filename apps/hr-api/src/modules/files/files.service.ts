@@ -20,12 +20,11 @@ export class FilesService {
     return fileName.toLowerCase().replace(/[^a-z0-9.-]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
   }
 
-  async createPresignedPost(dto: PresignPhotoDto) {
+  async createPresignedPost(orgId: string, dto: PresignPhotoDto) {
     const maxBytes = this.maxSizeMB * 1024 * 1024;
     if (dto.fileSize > maxBytes) throw new BadRequestException(`File size exceeds ${this.maxSizeMB}MB`);
 
-    // TODO: replace with real org from auth/RLS context
-    const orgId = '00000000-0000-0000-0000-000000000000';
+    // Use orgId from request header
 
     const now = new Date();
     const year = now.getFullYear();

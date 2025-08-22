@@ -1,0 +1,698 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Work Order Demo with Photo Upload</title>
+  <style>
+    body { 
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; 
+      margin: 20px; 
+      background: #f8fafc;
+    }
+    h1 { margin: 0 0 12px; color: #1e293b; }
+    h3 { margin: 0 0 8px; color: #334155; }
+    .row { display: grid; gap: 16px; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .row { grid-template-columns: repeat(3, 1fr); } }
+    .card { 
+      background: white;
+      border: 1px solid #e2e8f0; 
+      border-radius: 12px; 
+      padding: 16px; 
+      box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    }
+    label { 
+      display: block; 
+      font-size: 13px; 
+      font-weight: 500;
+      margin: 8px 0 4px; 
+      color: #374151; 
+    }
+    input, select, textarea, button { 
+      width: 100%; 
+      padding: 10px; 
+      border: 1px solid #d1d5db; 
+      border-radius: 8px; 
+      font-size: 14px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgb(59 130 246 / 0.1);
+    }
+    textarea { 
+      min-height: 80px; 
+      resize: vertical; 
+      font-family: inherit;
+    }
+    button { 
+      cursor: pointer;
+      font-weight: 500;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+    button:active { transform: translateY(1px); }
+    button:disabled { 
+      opacity: 0.5; 
+      cursor: not-allowed; 
+      transform: none;
+    }
+    button.primary { 
+      background: #3b82f6; 
+      color: white; 
+      border-color: #3b82f6; 
+    }
+    button.primary:hover:not(:disabled) { background: #2563eb; }
+    button.secondary { 
+      background: white; 
+      color: #374151;
+      border-color: #d1d5db;
+    }
+    button.secondary:hover:not(:disabled) { 
+      background: #f3f4f6; 
+      border-color: #9ca3af;
+    }
+    .photo-section {
+      border: 2px dashed #d1d5db;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 8px 0;
+      text-align: center;
+      transition: border-color 0.2s;
+    }
+    .photo-section.has-photo {
+      border-color: #10b981;
+      border-style: solid;
+    }
+    .photo-buttons {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .photo-buttons button {
+      flex: 1;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+    .photo-preview {
+      max-width: 200px;
+      max-height: 150px;
+      border-radius: 6px;
+      margin: 8px auto;
+      display: block;
+    }
+    .photo-info {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+    .file-input {
+      display: none;
+    }
+    .list { 
+      display: grid; 
+      gap: 8px; 
+      margin-top: 12px; 
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .item { 
+      border: 1px solid #e5e7eb; 
+      border-radius: 8px; 
+      padding: 12px;
+      background: white;
+      transition: all 0.2s;
+    }
+    .item:hover {
+      border-color: #d1d5db;
+      box-shadow: 0 2px 4px rgb(0 0 0 / 0.05);
+    }
+    .muted { 
+      color: #6b7280; 
+      font-size: 12px; 
+    }
+    .badge { 
+      display: inline-block; 
+      padding: 4px 8px; 
+      border-radius: 12px; 
+      font-size: 11px; 
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+    }
+    .badge.open { 
+      background: #3b82f6; 
+      color: #fff; 
+    }
+    .badge.completed { 
+      background: #10b981; 
+      color: #073b2d; 
+    }
+    .rowline { 
+      display: flex; 
+      gap: 8px; 
+      align-items: center; 
+      justify-content: space-between; 
+    }
+    .error { 
+      color: #dc2626; 
+      font-size: 13px; 
+      margin-top: 8px; 
+    }
+    .ok { 
+      color: #059669; 
+      font-size: 13px; 
+      margin-top: 8px; 
+    }
+    .fade-in { 
+      opacity: 0; 
+      transform: translateY(4px); 
+      transition: opacity 0.3s ease, transform 0.3s ease; 
+    }
+    .fade-in.show { 
+      opacity: 1; 
+      transform: none; 
+    }
+    .toast { 
+      position: fixed; 
+      bottom: 24px; 
+      left: 50%; 
+      transform: translateX(-50%) translateY(8px); 
+      opacity: 0; 
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      background: #10b981;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      box-shadow: 0 4px 12px rgb(0 0 0 / 0.15);
+      z-index: 1000;
+    }
+    .toast.show { 
+      opacity: 1; 
+      transform: translateX(-50%); 
+    }
+    .photo-indicator {
+      font-size: 16px;
+      margin-left: 4px;
+    }
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-top: 2px solid #3b82f6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 8px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .org-config {
+      background: #f1f5f9;
+      margin: 16px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Work Order Demo with Photo Upload</h1>
+  <div class="muted">Uses x-org-id header; API on :3000; demo served on :3002</div>
+
+  <div class="card org-config">
+    <label>Organization ID</label>
+    <input id="org" placeholder="00000000-0000-4000-8000-000000000001" />
+    <div class="muted">Saved to localStorage</div>
+  </div>
+
+  <div class="row">
+    <div class="card">
+      <h3>🏠 Tenant</h3>
+      
+      <label>Unit</label>
+      <select id="tenant-unit">
+        <option value="">Select a unit...</option>
+      </select>
+
+      <label>Description</label>
+      <textarea id="desc" placeholder="Describe the maintenance issue..."></textarea>
+
+      <label>Photo (Optional)</label>
+      <div class="photo-section" id="photo-section">
+        <div class="photo-buttons">
+          <button type="button" class="secondary" id="camera-btn">📷 Use Camera</button>
+          <button type="button" class="secondary" id="file-btn">📁 Choose File</button>
+        </div>
+        <input type="file" id="file-input" class="file-input" accept="image/*" capture="environment">
+        <div id="photo-preview-container"></div>
+        <div class="photo-info" id="photo-info">Max 2MB, will be compressed automatically</div>
+      </div>
+
+      <button id="create" class="primary" disabled>Create Work Order</button>
+      <div id="tenant-msg"></div>
+    </div>
+
+    <div class="card">
+      <h3>👔 Manager</h3>
+      <div id="manager-list" class="list"></div>
+      <div id="manager-msg" class="muted">Loading...</div>
+    </div>
+
+    <div class="card">
+      <h3>🔧 Technician</h3>
+      <div id="tech-list" class="list"></div>
+      <div id="tech-msg" class="muted">Loading...</div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+<script>
+const DEFAULT_ORG = '00000000-0000-4000-8000-000000000001';
+const API = 'http://localhost:3000';
+
+// DOM elements
+const $org = document.getElementById('org');
+const $unit = document.getElementById('tenant-unit');
+const $desc = document.getElementById('desc');
+const $create = document.getElementById('create');
+const $tenantMsg = document.getElementById('tenant-msg');
+const $managerList = document.getElementById('manager-list');
+const $managerMsg = document.getElementById('manager-msg');
+const $techList = document.getElementById('tech-list');
+const $techMsg = document.getElementById('tech-msg');
+const $photoSection = document.getElementById('photo-section');
+const $cameraBtn = document.getElementById('camera-btn');
+const $fileBtn = document.getElementById('file-btn');
+const $fileInput = document.getElementById('file-input');
+const $photoPreviewContainer = document.getElementById('photo-preview-container');
+const $photoInfo = document.getElementById('photo-info');
+const $toast = document.getElementById('toast');
+
+// State
+let currentPhoto = null;
+let photoMetadata = null;
+let workOrders = [];
+
+// Initialize
+$org.value = localStorage.getItem('orgId') || DEFAULT_ORG;
+$org.addEventListener('input', () => localStorage.setItem('orgId', $org.value));
+
+// Utility functions
+function h(tag, attrs = {}, ...kids) {
+  const el = document.createElement(tag);
+  Object.entries(attrs).forEach(([k, v]) => {
+    if (k === 'class') el.className = v;
+    else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+    else el.setAttribute(k, v);
+  });
+  kids.forEach(k => {
+    if (k == null) return;
+    if (typeof k === 'string') el.appendChild(document.createTextNode(k));
+    else el.appendChild(k);
+  });
+  return el;
+}
+
+function showToast(message, type = 'success') {
+  $toast.textContent = message;
+  $toast.className = `toast ${type}`;
+  requestAnimationFrame(() => {
+    $toast.classList.add('show');
+    setTimeout(() => {
+      $toast.classList.remove('show');
+    }, 3000);
+  });
+}
+
+function showMessage(element, message, type = 'ok') {
+  element.className = type;
+  element.textContent = message;
+  if (type === 'ok') {
+    setTimeout(() => { element.textContent = ''; }, 3000);
+  }
+}
+
+function updateSubmitButton() {
+  const hasUnit = $unit.value.trim();
+  const hasDesc = $desc.value.trim();
+  $create.disabled = !(hasUnit && hasDesc);
+}
+
+// API functions
+async function apiCall(method, path, body = null) {
+  const options = {
+    method,
+    headers: { 'x-org-id': $org.value },
+    mode: 'cors'
+  };
+  
+  if (body) {
+    if (body instanceof FormData) {
+      options.body = body;
+    } else {
+      options.headers['Content-Type'] = 'application/json';
+      options.body = JSON.stringify(body);
+    }
+  }
+  
+  const res = await fetch(API + path, options);
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`${method} ${path} failed: ${res.status} ${text}`);
+  }
+  return res.json();
+}
+
+// Image compression
+function compressImage(file, maxWidth = 1920, quality = 0.8, maxSizeMB = 2) {
+  return new Promise((resolve, reject) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      // Calculate new dimensions
+      let { width, height } = img;
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      
+      // Draw and compress
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      const tryCompress = (currentQuality) => {
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('Compression failed'));
+              return;
+            }
+            
+            const sizeMB = blob.size / (1024 * 1024);
+            if (sizeMB <= maxSizeMB || currentQuality <= 0.1) {
+              resolve(new File([blob], file.name, { type: blob.type }));
+            } else {
+              // Try with lower quality
+              tryCompress(currentQuality - 0.1);
+            }
+          },
+          file.type,
+          currentQuality
+        );
+      };
+      
+      tryCompress(quality);
+    };
+    
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// Photo upload functions
+async function presignPhoto(fileName, mimeType, fileSize) {
+  return apiCall('POST', '/api/files/presign-photo', {
+    fileName,
+    mimeType, 
+    fileSize
+  });
+}
+
+async function uploadToS3(url, fields, file) {
+  const formData = new FormData();
+  Object.entries(fields).forEach(([key, value]) => {
+    formData.append(key, value);
+  });
+  formData.append('file', file);
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    body: formData
+  });
+  
+  if (!response.ok) {
+    throw new Error(`S3 upload failed: ${response.status}`);
+  }
+}
+
+async function handlePhotoUpload(file) {
+  try {
+    $photoInfo.textContent = 'Compressing image...';
+    
+    // Compress image
+    const compressed = await compressImage(file);
+    const sizeMB = (compressed.size / (1024 * 1024)).toFixed(2);
+    
+    $photoInfo.textContent = 'Getting upload URL...';
+    
+    // Get presigned URL
+    const presignData = await presignPhoto(compressed.name, compressed.type, compressed.size);
+    
+    $photoInfo.textContent = 'Uploading to storage...';
+    
+    // Upload to S3 (mock)
+    await uploadToS3(presignData.url, presignData.fields, compressed);
+    
+    // Store metadata
+    photoMetadata = {
+      s3Key: presignData.s3Key,
+      mimeType: compressed.type,
+      sizeBytes: compressed.size
+    };
+    
+    // Show preview
+    const preview = h('img', { 
+      src: URL.createObjectURL(compressed), 
+      class: 'photo-preview',
+      alt: 'Photo preview'
+    });
+    $photoPreviewContainer.innerHTML = '';
+    $photoPreviewContainer.appendChild(preview);
+    
+    $photoSection.classList.add('has-photo');
+    $photoInfo.textContent = `Photo ready (${sizeMB}MB)`;
+    showMessage($tenantMsg, 'Photo uploaded successfully!', 'ok');
+    
+  } catch (error) {
+    console.error('Photo upload failed:', error);
+    showMessage($tenantMsg, `Photo upload failed: ${error.message}`, 'error');
+    $photoInfo.textContent = 'Upload failed - you can still submit without photo';
+  }
+}
+
+// Photo capture/selection
+$cameraBtn.addEventListener('click', async () => {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'environment' } 
+    });
+    
+    // Create video element for capture
+    const video = h('video', { autoplay: true, style: 'max-width: 100%; border-radius: 6px;' });
+    const captureBtn = h('button', { 
+      type: 'button', 
+      class: 'primary',
+      style: 'margin-top: 8px;'
+    }, 'Capture Photo');
+    
+    $photoPreviewContainer.innerHTML = '';
+    $photoPreviewContainer.appendChild(video);
+    $photoPreviewContainer.appendChild(captureBtn);
+    
+    video.srcObject = stream;
+    $photoInfo.textContent = 'Position camera and click capture';
+    
+    captureBtn.onclick = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      
+      stream.getTracks().forEach(track => track.stop());
+      
+      canvas.toBlob((blob) => {
+        const file = new File([blob], 'camera-photo.jpg', { type: 'image/jpeg' });
+        handlePhotoUpload(file);
+      }, 'image/jpeg', 0.8);
+    };
+    
+  } catch (error) {
+    console.error('Camera access failed:', error);
+    showMessage($tenantMsg, 'Camera not available, use file upload instead', 'error');
+  }
+});
+
+$fileBtn.addEventListener('click', () => {
+  $fileInput.click();
+});
+
+$fileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    handlePhotoUpload(file);
+  }
+});
+
+// Work order functions
+async function loadUnits() {
+  try {
+    const units = await apiCall('GET', '/api/lookups/units');
+    $unit.innerHTML = '<option value="">Select a unit...</option>';
+    units.forEach(unit => {
+      $unit.appendChild(h('option', { value: unit.id }, unit.name));
+    });
+    showMessage($tenantMsg, 'Units loaded', 'ok');
+  } catch (error) {
+    showMessage($tenantMsg, `Failed to load units: ${error.message}`, 'error');
+  }
+}
+
+async function loadOrders() {
+  try {
+    const orders = await apiCall('GET', '/api/maintenance/work-orders');
+    
+    // Update workOrders array and render lists
+    const newOrders = orders.filter(order => 
+      !workOrders.find(existing => existing.id === order.id)
+    );
+    
+    workOrders = orders;
+    renderLists(workOrders, newOrders);
+    
+    $managerMsg.textContent = '';
+    $techMsg.textContent = '';
+  } catch (error) {
+    $managerMsg.textContent = `Error: ${error.message}`;
+    $techMsg.textContent = `Error: ${error.message}`;
+  }
+}
+
+function renderLists(orders, newOrders = []) {
+  const renderList = (container, showCompleteButton = false) => {
+    container.innerHTML = '';
+    
+    if (!orders.length) {
+      container.appendChild(h('div', { class: 'muted' }, 'No work orders yet.'));
+      return;
+    }
+
+    orders.forEach(order => {
+      const isNew = newOrders.find(newOrder => newOrder.id === order.id);
+      const badge = h('span', { class: `badge ${order.status}` }, order.status);
+      const photoIndicator = order.photo_attached ? 
+        h('span', { class: 'photo-indicator' }, '📷') : null;
+      
+      const line1 = h('div', { class: 'rowline' },
+        h('div', {}, 
+          order.ticketId + ' • ' + (order.unitName || 'Unit'),
+          photoIndicator
+        ),
+        badge
+      );
+      
+      const line2Content = [h('div', { class: 'muted' }, order.description || '')];
+      
+      if (showCompleteButton && order.status === 'open') {
+        const completeBtn = h('button', { 
+          class: 'secondary',
+          style: 'padding: 6px 12px; font-size: 12px;',
+          onclick: async () => {
+            try {
+              await apiCall('PATCH', `/api/maintenance/work-orders/${order.id}/status`, 
+                { status: 'completed' });
+              await loadOrders();
+              showToast('Work order completed!');
+            } catch (error) {
+              showMessage($techMsg, error.message, 'error');
+            }
+          }
+        }, 'Complete');
+        line2Content.push(completeBtn);
+      } else if (order.status === 'completed') {
+        line2Content.push(h('span', { class: 'muted' }, '✓'));
+      }
+      
+      const line2 = h('div', { class: 'rowline' }, ...line2Content);
+      const item = h('div', { 
+        class: `item ${isNew ? 'fade-in' : ''}` 
+      }, line1, line2);
+      
+      container.appendChild(item);
+      
+      // Trigger fade-in animation for new items
+      if (isNew) {
+        requestAnimationFrame(() => {
+          item.classList.add('show');
+        });
+      }
+    });
+  };
+
+  renderList($managerList, false);
+  renderList($techList, true);
+}
+
+async function createWorkOrder() {
+  try {
+    $create.disabled = true;
+    $create.innerHTML = 'Creating... <span class="loading"></span>';
+    
+    const body = {
+      unitId: $unit.value,
+      description: $desc.value
+    };
+    
+    if (photoMetadata) {
+      body.photoMetadata = photoMetadata;
+    }
+    
+    const result = await apiCall('POST', '/api/maintenance/work-orders', body);
+    
+    // Reset form
+    $desc.value = '';
+    photoMetadata = null;
+    $photoPreviewContainer.innerHTML = '';
+    $photoSection.classList.remove('has-photo');
+    $photoInfo.textContent = 'Max 2MB, will be compressed automatically';
+    
+    // Refresh lists
+    await loadOrders();
+    
+    showToast(`Work order ${result.ticketId} created!`);
+    showMessage($tenantMsg, `Created ${result.ticketId}`, 'ok');
+    
+  } catch (error) {
+    showMessage($tenantMsg, `Failed to create work order: ${error.message}`, 'error');
+  } finally {
+    $create.disabled = false;
+    $create.textContent = 'Create Work Order';
+    updateSubmitButton();
+  }
+}
+
+// Event listeners
+$unit.addEventListener('change', updateSubmitButton);
+$desc.addEventListener('input', updateSubmitButton);
+$create.addEventListener('click', createWorkOrder);
+
+// Initial load and auto-refresh
+async function initialize() {
+  await loadUnits();
+  await loadOrders();
+  
+  // Auto-refresh every 10 seconds
+  setInterval(loadOrders, 10000);
+}
+
+initialize();
+</script>
+
+</body>
+</html>

@@ -8,9 +8,9 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  // Enable CORS for web UI (supports both :3001 and :3004 ports)
+  // Enable CORS for web UI (supports :3001, :3002, and :3004 ports)
   app.enableCors({
-    origin: ['http://localhost:3001', 'http://localhost:3004'],
+    origin: ['http://localhost:3001', 'http://localhost:3002', 'http://localhost:3004'],
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'x-org-id', 'Authorization'],
     credentials: false, // Explicit security setting

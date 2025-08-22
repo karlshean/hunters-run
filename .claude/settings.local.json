@@ -15,7 +15,12 @@
       "Bash(taskkill:*)",
       "Bash(git checkout:*)",
       "Bash(grep:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker compose:*)",
+      "Bash(timeout:*)",
+      "Bash(npx http-server:*)",
+      "Bash(set ORG=\"00000000-0000-4000-8000-000000000001\")"
     ],
     "deny": [],
     "ask": []
