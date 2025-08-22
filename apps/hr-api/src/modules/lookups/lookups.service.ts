@@ -51,8 +51,8 @@ export class LookupsService {
     // Return demo data for CEO validation org - using new units
     if (orgId === '00000000-0000-4000-8000-000000000001') {
       return [
-        { id: '11111111-1111-1111-1111-111111111111', name: 'Unit 101' },
-        { id: '22222222-2222-2222-2222-222222222222', name: 'Unit 202' }
+        { id: '00000000-0000-4000-8000-000000000003', name: 'Unit 101' },
+        { id: '11111111-1111-4111-8111-111111111111', name: 'Unit 202' }
       ];
     }
     return this.db.executeWithOrgContext(orgId, async (client) => {

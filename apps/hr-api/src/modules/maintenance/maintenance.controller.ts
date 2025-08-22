@@ -16,11 +16,9 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { MaintenanceService } from './maintenance.service';
 import { RLSInterceptor } from '../../common/rls.interceptor';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
-import { CreateWorkOrderSimpleDto } from './dto/create-work-order-simple.dto';
 import { ChangeStatusDto } from './dto/change-status.dto';
 import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { AttachEvidenceDto } from './dto/attach-evidence.dto';
-import { rejectPhotoMetadataIfDisabled } from '../../common/photo-guards';
 import { LookupsService } from '../lookups/lookups.service';
 
 @Controller('maintenance')
@@ -32,14 +30,11 @@ export class MaintenanceController {
   ) {}
 
   @Post('work-orders')
-  async createWorkOrder(@Req() req: any, @Body() dto: any) {
-    // Route to simple creation if it matches the simple DTO structure
-    if ('unitId' in dto && 'description' in dto && !('title' in dto) && !('priority' in dto)) {
-      return this.maintenanceService.createSimpleWorkOrder(req.orgId, dto as CreateWorkOrderSimpleDto);
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async createWorkOrder(@Req() req: any, @Body() dto: CreateWorkOrderDto) {
+    if (!req.orgId) {
+      throw new BadRequestException('Missing organization ID in request headers');
     }
-    
-    // Fall back to existing complex creation
-    rejectPhotoMetadataIfDisabled(dto);
     
     // Stub for demo org (CEO validation)
     if (req.orgId === '00000000-0000-4000-8000-000000000001') {
@@ -51,18 +46,14 @@ export class MaintenanceController {
       return {
         id: workOrderId,
         ticketId,
-        unitId: dto.unitId || '00000000-0000-4000-8000-000000000003',
-        tenantId: dto.tenantId || '00000000-0000-4000-8000-000000000004',
-        title: dto.title || 'CEO Test',
-        description: dto.description || '',
-        priority: dto.priority || 'normal',
-        status: 'new',
-        assignedTechId: null,
+        unitId: dto.unitId,
+        status: 'open',
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        ...(dto.tenantPhotoUrl && { tenantPhotoUrl: dto.tenantPhotoUrl })
       };
     }
-    return this.maintenanceService.createWorkOrder(req.orgId, dto as CreateWorkOrderDto);
+    
+    return this.maintenanceService.createWorkOrder(req.orgId, dto);
   }
 
   @Post('photo')

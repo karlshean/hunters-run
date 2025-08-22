@@ -18,8 +18,8 @@ try {
     }
     
     $firstUnit = $unitsRes[0]
-    if (-not $firstUnit.id -or -not $firstUnit.unitNumber) {
-        throw "Unit missing required fields (id, unitNumber)"
+    if (-not $firstUnit.id -or -not $firstUnit.name) {
+        throw "Unit missing required fields (id, name)"
     }
     
     Write-Host "SUCCESS: Units lookup returned $($unitsRes.Count) units" -ForegroundColor Green

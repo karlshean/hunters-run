@@ -3,7 +3,6 @@ import { DatabaseService } from '../../common/database.service';
 import { AuditService } from '../../common/audit.service';
 import { FilesService } from '../files/files.service';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
-import { CreateWorkOrderSimpleDto } from './dto/create-work-order-simple.dto';
 import { ChangeStatusDto } from './dto/change-status.dto';
 import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { AttachEvidenceDto } from './dto/attach-evidence.dto';
@@ -46,102 +45,68 @@ export class MaintenanceService {
     return `WO-${year}-${sequence.toString().padStart(4, '0')}`;
   }
 
-  async createWorkOrder(orgId: string, dto: CreateWorkOrderDto): Promise<WorkOrder> {
-    // Validate photo token if photo metadata is provided
-    if (dto.photoMetadata) {
-      const isValidToken = await this.filesService.validatePhotoToken(orgId, dto.photoMetadata.s3Key);
-      if (!isValidToken) {
-        throw new UnprocessableEntityException('Invalid or expired photo upload token');
-      }
-    }
-
-    // Stub implementation for CEO validation
-    if (orgId === '00000000-0000-4000-8000-000000000001') {
-      const workOrderId = 'wo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-      const ticketId = this.generateTicketId();
-      return {
-        id: workOrderId,
-        ticketId,
-        unitId: dto.unitId || '00000000-0000-4000-8000-000000000003',
-        tenantId: dto.tenantId || '00000000-0000-4000-8000-000000000004',
-        title: dto.title,
-        description: dto.description || '',
-        priority: dto.priority || 'normal',
-        status: 'new',
-        assignedTechId: null,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-    }
-    
+  async createWorkOrder(orgId: string, dto: CreateWorkOrderDto): Promise<{
+    id: string;
+    ticketId: string;
+    unitId: string;
+    status: string;
+    createdAt: string;
+    tenantPhotoUrl?: string;
+  }> {
     return this.db.executeWithOrgContext(orgId, async (client) => {
-      // Verify unit exists and belongs to this organization
-      const unitCheck = await client.query('SELECT 1 FROM hr.units WHERE id = $1 AND organization_id = $2 LIMIT 1', [dto.unitId, orgId]);
+      // Step 1: Validate unit belongs to org
+      const unitCheck = await client.query(
+        'SELECT 1 FROM hr.units WHERE id = $1 AND organization_id = $2 LIMIT 1',
+        [dto.unitId, orgId]
+      );
+      
       if (unitCheck.rows.length === 0) {
         throw new BadRequestException('Invalid unitId for this organization');
       }
 
-      const tenantCheck = await client.query('SELECT id FROM hr.tenants WHERE id = $1', [dto.tenantId]);
-      if (tenantCheck.rows.length === 0) {
-        throw new NotFoundException('Tenant not found');
-      }
+      // Step 2: Get next sequence number and format ticket
+      const seqResult = await client.query(`SELECT nextval('hr.work_order_seq') AS n`);
+      const year = new Date().getFullYear();
+      const ticketId = `WO-${year}-${seqResult.rows[0].n.toString().padStart(4, '0')}`;
 
-      const ticketId = this.generateTicketId();
-      
-      // Prepare photo fields if photo metadata provided
-      const photoFields = dto.photoMetadata ? {
-        tenant_photo_s3_key: dto.photoMetadata.s3Key,
-        tenant_photo_uploaded_at: dto.photoMetadata.uploadedAt || new Date().toISOString(),
-        tenant_photo_size_bytes: dto.photoMetadata.sizeBytes,
-        tenant_photo_mime_type: dto.photoMetadata.mimeType
-      } : {};
-      
+      // Step 3: Insert work order
       const result = await client.query(`
-        INSERT INTO hr.work_orders (
-          organization_id, unit_id, tenant_id, title, description, priority, status, 
-          ${dto.photoMetadata ? 'tenant_photo_s3_key, tenant_photo_uploaded_at, tenant_photo_size_bytes, tenant_photo_mime_type,' : ''}
-          created_at, updated_at
-        )
-        VALUES ($1, $2, $3, $4, $5, $6, 'new', 
-          ${dto.photoMetadata ? '$7, $8, $9, $10,' : ''}
-          NOW(), NOW())
-        RETURNING id, unit_id as "unitId", tenant_id as "tenantId", title, description, priority, status, 
-                  assigned_tech_id as "assignedTechId", created_at as "createdAt", updated_at as "updatedAt",
-                  tenant_photo_s3_key as "tenantPhotoS3Key", tenant_photo_uploaded_at as "tenantPhotoUploadedAt",
-                  tenant_photo_size_bytes as "tenantPhotoSizeBytes", tenant_photo_mime_type as "tenantPhotoMimeType"
-      `, dto.photoMetadata ? 
-        [orgId, dto.unitId, dto.tenantId, dto.title, dto.description || '', dto.priority, 
-         photoFields.tenant_photo_s3_key, photoFields.tenant_photo_uploaded_at, 
-         photoFields.tenant_photo_size_bytes, photoFields.tenant_photo_mime_type] :
-        [orgId, dto.unitId, dto.tenantId, dto.title, dto.description || '', dto.priority]);
+        INSERT INTO hr.work_orders
+          (organization_id, unit_id, title, description, priority, status, tenant_photo_url, tenant_photo_uploaded_at, ticket_id)
+        VALUES ($1, $2, $3, $4, 'normal'::hr.priority, 'new'::hr.status, $5, 
+                CASE WHEN $5 IS NULL THEN NULL ELSE now() END,
+                $6)
+        RETURNING id, unit_id, status::text, created_at, tenant_photo_url, ticket_id
+      `, [orgId, dto.unitId, 'Work Order', dto.description, dto.tenantPhotoUrl || null, ticketId]);
 
-      const workOrder = { ...result.rows[0], ticketId };
+      const workOrder = result.rows[0];
 
-      // Create H5 audit log entry
+      // Step 4: Emit audit event
       await this.auditService.log({
         orgId,
         action: 'work_order.created',
         entity: 'work_order',
         entityId: workOrder.id,
         metadata: {
-          title: dto.title,
-          priority: dto.priority,
-          status: 'new',
+          description: dto.description,
+          status: 'open',
           unitId: dto.unitId,
-          tenantId: dto.tenantId,
-          ...(dto.photoMetadata && { 
-            photoS3Key: dto.photoMetadata.s3Key,
-            photoSizeBytes: dto.photoMetadata.sizeBytes,
-            photoMimeType: dto.photoMetadata.mimeType 
-          })
+          photo_attached: !!dto.tenantPhotoUrl
         }
       });
 
-      return workOrder;
+      return {
+        id: workOrder.id,
+        ticketId: workOrder.ticket_id,
+        unitId: workOrder.unit_id,
+        status: workOrder.status,
+        createdAt: workOrder.created_at,
+        ...(workOrder.tenant_photo_url && { tenantPhotoUrl: workOrder.tenant_photo_url })
+      };
     });
   }
 
-  async createSimpleWorkOrder(orgId: string, dto: CreateWorkOrderSimpleDto): Promise<{ id: string; ticketId: string; unitId: string; status: string; createdAt: string; tenantPhotoUrl?: string }> {
+  async createSimpleWorkOrder(orgId: string, dto: any): Promise<{ id: string; ticketId: string; unitId: string; status: string; createdAt: string; tenantPhotoUrl?: string }> {
     // Stub implementation for CEO validation
     if (orgId === '00000000-0000-4000-8000-000000000001') {
       const workOrderId = 'wo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
