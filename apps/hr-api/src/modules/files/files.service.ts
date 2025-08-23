@@ -14,17 +14,34 @@ export class FilesService {
   private region: string;
 
   constructor(private readonly db: DatabaseService) {
-    this.region = process.env.AWS_REGION || 'us-east-1';
-    this.bucket = process.env.AWS_S3_BUCKET || 'test-bucket';
+    // Validate required environment variables
+    if (!process.env.AWS_REGION) {
+      throw new Error('AWS_REGION environment variable is required');
+    }
+    if (!process.env.AWS_S3_BUCKET) {
+      throw new Error('AWS_S3_BUCKET environment variable is required');
+    }
+    if (!process.env.AWS_ACCESS_KEY_ID) {
+      throw new Error('AWS_ACCESS_KEY_ID environment variable is required');
+    }
+    if (!process.env.AWS_SECRET_ACCESS_KEY) {
+      throw new Error('AWS_SECRET_ACCESS_KEY environment variable is required');
+    }
+
+    this.region = process.env.AWS_REGION;
+    this.bucket = process.env.AWS_S3_BUCKET;
     this.maxSizeMB = parseInt(process.env.PHOTO_MAX_SIZE_MB || '5', 10);
     this.expiryMinutes = parseInt(process.env.PHOTO_PRESIGN_EXPIRY_MINUTES || '5', 10);
+    
+    // Debug logs for loaded configuration
+    console.log(`AWS Configuration loaded - Bucket: ${this.bucket}, Region: ${this.region}`);
     
     // Initialize S3 client
     this.s3Client = new S3Client({
       region: this.region,
       credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'mock-access-key',
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || 'mock-secret-key'
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
       }
     });
   }
