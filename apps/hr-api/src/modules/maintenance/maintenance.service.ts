@@ -226,7 +226,7 @@ export class MaintenanceService {
     });
   }
 
-  async listWorkOrders(orgId: string): Promise<Array<{
+  async listWorkOrders(orgId: string, options?: { limit?: number; status?: string }): Promise<Array<{
     id: string;
     ticketId: string;
     unitName: string;
@@ -234,17 +234,37 @@ export class MaintenanceService {
     status: string;
     createdAt: string;
   }>> {
+    const limit = options?.limit || 50;
+    const status = options?.status;
+
     // Stub implementation for CEO validation
     if (orgId === '00000000-0000-4000-8000-000000000001') {
       // Return demo work orders from memory, newest first
       console.log('Getting orders from map, size:', demoWorkOrders.size);
-      const orders = Array.from(demoWorkOrders.values())
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 50);
+      let orders = Array.from(demoWorkOrders.values())
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      // Apply status filter if provided
+      if (status) {
+        orders = orders.filter(order => order.status === status);
+      }
+      
+      // Apply limit
+      orders = orders.slice(0, limit);
       return orders;
     }
     
     return this.db.executeWithOrgContext(orgId, async (client) => {
+      let whereClause = 'WHERE wo.organization_id = $1';
+      const params: any[] = [orgId];
+      
+      if (status) {
+        whereClause += ' AND wo.status = $' + (params.length + 1);
+        params.push(status);
+      }
+      
+      params.push(limit);
+      
       const result = await client.query(`
         SELECT 
           wo.id,
@@ -255,10 +275,10 @@ export class MaintenanceService {
           wo.created_at as "createdAt"
         FROM hr.work_orders wo
         JOIN hr.units u ON wo.unit_id = u.id
-        WHERE wo.organization_id = $1
+        ${whereClause}
         ORDER BY wo.created_at DESC
-        LIMIT 50
-      `, [orgId]);
+        LIMIT $${params.length}
+      `, params);
 
       return result.rows;
     });

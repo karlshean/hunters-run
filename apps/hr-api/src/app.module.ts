@@ -8,6 +8,7 @@ import { MaintenanceModule } from './modules/maintenance/maintenance.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { FilesModule } from './modules/files/files.module';
+import { WorkOrdersModule } from './modules/work-orders/work-orders.module';
 import { OrgGuard } from './common/org-guard';
 
 @Module({
@@ -18,6 +19,7 @@ import { OrgGuard } from './common/org-guard';
     LookupsModule,
     MaintenanceModule,
     PaymentsModule,
+    WorkOrdersModule,
   ],
   controllers: [HealthController, ReadyController, FlagsController],
   providers: [

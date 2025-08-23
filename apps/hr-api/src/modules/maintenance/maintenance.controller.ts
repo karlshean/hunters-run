@@ -5,6 +5,7 @@ import {
   Patch, 
   Body, 
   Param, 
+  Query, 
   UseInterceptors, 
   Req,
   ValidationPipe,
@@ -21,6 +22,7 @@ import { ChangeStatusDto } from './dto/change-status.dto';
 import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { AttachEvidenceDto } from './dto/attach-evidence.dto';
 import { AttachPhotoEvidenceDto } from './dto/attach-photo-evidence.dto';
+import { ListWorkOrdersDto } from '../work-orders/dto/list-work-orders.dto';
 import { LookupsService } from '../lookups/lookups.service';
 
 @Controller('maintenance')
@@ -120,20 +122,41 @@ export class MaintenanceController {
   }
 
   @Get('work-orders')
-  async listWorkOrders(@Req() req: any) {
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async listWorkOrders(@Req() req: any, @Query() query: ListWorkOrdersDto) {
     if (!req.orgId) {
       throw new BadRequestException('Missing organization ID in request headers');
     }
     
+    const limit = query.limit || 50;
+    const status = query.status;
+    
     // Stub for demo org
     if (req.orgId === '00000000-0000-4000-8000-000000000001') {
-      const orders = Array.from(MaintenanceController.demoWorkOrders.values())
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 50);
-      return orders;
+      let orders = Array.from(MaintenanceController.demoWorkOrders.values())
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      // Apply status filter if provided
+      if (status) {
+        orders = orders.filter(order => order.status === status);
+      }
+      
+      // Apply limit
+      orders = orders.slice(0, limit);
+      
+      // Format response with required fields
+      return orders.map(order => ({
+        id: order.id,
+        ticketId: order.ticketId,
+        unitId: order.unitId,
+        status: order.status,
+        description: order.description,
+        createdAt: order.createdAt,
+        photo_attached: order.photo_attached || false
+      }));
     }
     
-    return this.maintenanceService.listWorkOrders(req.orgId);
+    return this.maintenanceService.listWorkOrders(req.orgId, { limit, status });
   }
 
   @Get('work-orders/:id')
