@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { TenantView } from './components/TenantView';
 import { TenantReport } from './components/TenantReport';
+import { TenantSubmit } from './components/TenantSubmit';
 import { ManagerView } from './components/ManagerView';
 import { useFlags } from './lib/useFlags';
 import './styles.css';
@@ -63,6 +64,7 @@ function App() {
           <Route path="/" element={<HealthCheck />} />
           <Route path="/tenant" element={<TenantView />} />
           <Route path="/tenant/report" element={<TenantReport />} />
+          <Route path="/tenant/submit" element={<TenantSubmit />} />
           <Route path="/manager" element={<ManagerView />} />
           <Route path="/tech" element={<ManagerView />} />
           <Route path="*" element={<Navigate to="/" replace />} />

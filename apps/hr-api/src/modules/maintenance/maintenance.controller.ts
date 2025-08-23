@@ -16,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { MaintenanceService } from './maintenance.service';
 import { RLSInterceptor } from '../../common/rls.interceptor';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
+import { CreateWorkOrderTenantDto } from './dto/create-work-order-tenant.dto';
 import { ChangeStatusDto } from './dto/change-status.dto';
 import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { AttachEvidenceDto } from './dto/attach-evidence.dto';
@@ -34,45 +35,65 @@ export class MaintenanceController {
 
   @Post('work-orders')
   @UsePipes(new ValidationPipe({ transform: true }))
-  async createWorkOrder(@Req() req: any, @Body() dto: CreateWorkOrderDto) {
+  async createWorkOrder(@Req() req: any, @Body() dto: CreateWorkOrderDto | CreateWorkOrderTenantDto) {
     if (!req.orgId) {
       throw new BadRequestException('Missing organization ID in request headers');
     }
+    
+    // Check if it's a tenant DTO (has tenant_name field)
+    const isTenantDto = 'tenant_name' in dto;
     
     // Stub for demo org (CEO validation)
     if (req.orgId === '00000000-0000-4000-8000-000000000001') {
       const workOrderId = 'wo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
       const year = new Date().getFullYear();
       const sequence = Math.floor(Math.random() * 9999) + 1;
-      const ticketId = `WO-${year}-${sequence.toString().padStart(4, '0')}`;
+      const ticketId = `HR-${year}-${sequence.toString().padStart(3, '0')}`;
       const createdAt = new Date().toISOString();
       
-      const unitName = dto.unitId === '00000000-0000-4000-8000-000000000003' ? 'Unit 101' : 'Unit 202';
+      // Handle both DTO types
+      const unitId = isTenantDto ? (dto as CreateWorkOrderTenantDto).unit_id : (dto as CreateWorkOrderDto).unitId;
+      const unitName = unitId === '00000000-0000-4000-8000-000000000003' ? 'Unit 101' : 'Unit 202';
       
-      const workOrder = {
+      const workOrder: any = {
         id: workOrderId,
         ticketId,
-        unitId: dto.unitId,
+        unitId,
         unitName,
         description: dto.description,
-        status: 'open',
+        status: 'submitted',
         createdAt,
-        photo_attached: !!(dto.photoMetadata || dto.tenantPhotoUrl),
-        ...(dto.tenantPhotoUrl && { tenantPhotoUrl: dto.tenantPhotoUrl }),
-        ...(dto.photoMetadata && { photoMetadata: dto.photoMetadata })
       };
+      
+      if (isTenantDto) {
+        const tenantDto = dto as CreateWorkOrderTenantDto;
+        workOrder.title = tenantDto.title;
+        workOrder.priority = tenantDto.priority;
+        workOrder.tenant_name = tenantDto.tenant_name;
+        workOrder.tenant_phone = tenantDto.tenant_phone;
+        workOrder.photo_attached = !!tenantDto.tenant_photo_s3_key;
+        if (tenantDto.tenant_photo_s3_key) {
+          workOrder.tenant_photo_s3_key = tenantDto.tenant_photo_s3_key;
+          workOrder.tenant_photo_filename = tenantDto.tenant_photo_filename;
+        }
+      } else {
+        const regularDto = dto as CreateWorkOrderDto;
+        workOrder.photo_attached = !!(regularDto.photoMetadata || regularDto.tenantPhotoUrl);
+        if (regularDto.tenantPhotoUrl) workOrder.tenantPhotoUrl = regularDto.tenantPhotoUrl;
+        if (regularDto.photoMetadata) workOrder.photoMetadata = regularDto.photoMetadata;
+      }
       
       MaintenanceController.demoWorkOrders.set(workOrderId, workOrder);
       
       return {
         id: workOrderId,
         ticketId,
-        unitId: dto.unitId,
-        status: 'open',
+        ticket_number: ticketId,
+        unitId,
+        status: 'submitted',
         createdAt,
-        photo_attached: !!(dto.photoMetadata || dto.tenantPhotoUrl),
-        ...(dto.tenantPhotoUrl && { tenantPhotoUrl: dto.tenantPhotoUrl }),
-        ...(dto.photoMetadata && { photoMetadata: dto.photoMetadata })
+        estimated_response_time: '24h',
+        ...workOrder
       };
     }
     

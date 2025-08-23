@@ -3,6 +3,7 @@ import { DatabaseService } from '../../common/database.service';
 import { AuditService } from '../../common/audit.service';
 import { FilesService } from '../files/files.service';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
+import { CreateWorkOrderTenantDto } from './dto/create-work-order-tenant.dto';
 import { ChangeStatusDto } from './dto/change-status.dto';
 import { AssignTechnicianDto } from './dto/assign-technician.dto';
 import { AttachEvidenceDto } from './dto/attach-evidence.dto';
@@ -49,7 +50,7 @@ export class MaintenanceService {
     return `WO-${year}-${sequence.toString().padStart(4, '0')}`;
   }
 
-  async createWorkOrder(orgId: string, dto: CreateWorkOrderDto): Promise<{
+  async createWorkOrder(orgId: string, dto: CreateWorkOrderDto | CreateWorkOrderTenantDto): Promise<{
     id: string;
     ticketId: string;
     unitId: string;
@@ -57,6 +58,8 @@ export class MaintenanceService {
     createdAt: string;
     tenantPhotoUrl?: string;
   }> {
+    const isTenantDto = 'tenant_name' in dto;
+    
     // Stub for demo org (CEO validation)
     if (orgId === '00000000-0000-4000-8000-000000000001') {
       const workOrderId = 'wo-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
@@ -65,16 +68,36 @@ export class MaintenanceService {
       const ticketId = `WO-${year}-${sequence.toString().padStart(4, '0')}`;
       const createdAt = new Date().toISOString();
       
-      const workOrder = {
+      // Get unitId from the correct field
+      const unitId = isTenantDto ? (dto as CreateWorkOrderTenantDto).unit_id : (dto as CreateWorkOrderDto).unitId;
+      
+      const workOrder: any = {
         id: workOrderId,
         ticketId,
-        unitId: dto.unitId,
-        unitName: dto.unitId === '00000000-0000-4000-8000-000000000003' ? 'Unit 101' : 'Unit 202',
+        unitId,
+        unitName: unitId === '00000000-0000-4000-8000-000000000003' ? 'Unit 101' : 'Unit 202',
         description: dto.description,
         status: 'open',
         createdAt,
-        ...(dto.tenantPhotoUrl && { tenantPhotoUrl: dto.tenantPhotoUrl })
       };
+      
+      // Add tenant-specific fields
+      if (isTenantDto) {
+        const tenantDto = dto as CreateWorkOrderTenantDto;
+        workOrder.tenant_name = tenantDto.tenant_name;
+        workOrder.tenant_phone = tenantDto.tenant_phone;
+        workOrder.title = tenantDto.title;
+        workOrder.priority = tenantDto.priority;
+        if (tenantDto.tenant_photo_s3_key) {
+          workOrder.tenant_photo_s3_key = tenantDto.tenant_photo_s3_key;
+          workOrder.tenant_photo_filename = tenantDto.tenant_photo_filename;
+        }
+      } else {
+        const regularDto = dto as CreateWorkOrderDto;
+        if (regularDto.tenantPhotoUrl) {
+          workOrder.tenantPhotoUrl = regularDto.tenantPhotoUrl;
+        }
+      }
       
       demoWorkOrders.set(workOrderId, workOrder);
       console.log('Added work order to map, size:', demoWorkOrders.size);
@@ -82,63 +105,70 @@ export class MaintenanceService {
       return {
         id: workOrderId,
         ticketId,
-        unitId: dto.unitId,
+        unitId,
         status: 'open',
         createdAt,
-        ...(dto.tenantPhotoUrl && { tenantPhotoUrl: dto.tenantPhotoUrl })
+        ...(workOrder.tenantPhotoUrl && { tenantPhotoUrl: workOrder.tenantPhotoUrl })
       };
     }
-    return this.db.executeWithOrgContext(orgId, async (client) => {
-      // Step 1: Validate unit belongs to org
-      const unitCheck = await client.query(
-        'SELECT 1 FROM hr.units WHERE id = $1 AND organization_id = $2 LIMIT 1',
-        [dto.unitId, orgId]
-      );
-      
-      if (unitCheck.rows.length === 0) {
-        throw new BadRequestException('Invalid unitId for this organization');
-      }
-
-      // Step 2: Get next sequence number and format ticket
-      const seqResult = await client.query(`SELECT nextval('hr.work_order_seq') AS n`);
-      const year = new Date().getFullYear();
-      const ticketId = `WO-${year}-${seqResult.rows[0].n.toString().padStart(4, '0')}`;
-
-      // Step 3: Insert work order
-      const result = await client.query(`
-        INSERT INTO hr.work_orders
-          (organization_id, unit_id, title, description, priority, status, tenant_photo_url, tenant_photo_uploaded_at, ticket_id)
-        VALUES ($1, $2, $3, $4, 'normal'::hr.priority, 'new'::hr.status, $5, 
-                CASE WHEN $5 IS NULL THEN NULL ELSE now() END,
-                $6)
-        RETURNING id, unit_id, status::text, created_at, tenant_photo_url, ticket_id
-      `, [orgId, dto.unitId, 'Work Order', dto.description, dto.tenantPhotoUrl || null, ticketId]);
-
-      const workOrder = result.rows[0];
-
-      // Step 4: Emit audit event
-      await this.auditService.log({
-        orgId,
-        action: 'work_order.created',
-        entity: 'work_order',
-        entityId: workOrder.id,
-        metadata: {
-          description: dto.description,
-          status: 'open',
-          unitId: dto.unitId,
-          photo_attached: !!dto.tenantPhotoUrl
+    // For the database path, we only support CreateWorkOrderDto for now
+    if (!isTenantDto) {
+      const regularDto = dto as CreateWorkOrderDto;
+      return this.db.executeWithOrgContext(orgId, async (client) => {
+        // Step 1: Validate unit belongs to org
+        const unitCheck = await client.query(
+          'SELECT 1 FROM hr.units WHERE id = $1 AND organization_id = $2 LIMIT 1',
+          [regularDto.unitId, orgId]
+        );
+        
+        if (unitCheck.rows.length === 0) {
+          throw new BadRequestException('Invalid unitId for this organization');
         }
-      });
 
-      return {
-        id: workOrder.id,
-        ticketId: workOrder.ticket_id,
-        unitId: workOrder.unit_id,
-        status: workOrder.status,
-        createdAt: workOrder.created_at,
-        ...(workOrder.tenant_photo_url && { tenantPhotoUrl: workOrder.tenant_photo_url })
-      };
-    });
+        // Step 2: Get next sequence number and format ticket
+        const seqResult = await client.query(`SELECT nextval('hr.work_order_seq') AS n`);
+        const year = new Date().getFullYear();
+        const ticketId = `WO-${year}-${seqResult.rows[0].n.toString().padStart(4, '0')}`;
+
+        // Step 3: Insert work order
+        const result = await client.query(`
+          INSERT INTO hr.work_orders
+            (organization_id, unit_id, title, description, priority, status, tenant_photo_url, tenant_photo_uploaded_at, ticket_id)
+          VALUES ($1, $2, $3, $4, 'normal'::hr.priority, 'new'::hr.status, $5, 
+                  CASE WHEN $5 IS NULL THEN NULL ELSE now() END,
+                  $6)
+          RETURNING id, unit_id, status::text, created_at, tenant_photo_url, ticket_id
+        `, [orgId, regularDto.unitId, 'Work Order', regularDto.description, regularDto.tenantPhotoUrl || null, ticketId]);
+
+        const workOrder = result.rows[0];
+
+        // Step 4: Emit audit event
+        await this.auditService.log({
+          orgId,
+          action: 'work_order.created',
+          entity: 'work_order',
+          entityId: workOrder.id,
+          metadata: {
+            description: regularDto.description,
+            status: 'open',
+            unitId: regularDto.unitId,
+            photo_attached: !!regularDto.tenantPhotoUrl
+          }
+        });
+
+        return {
+          id: workOrder.id,
+          ticketId: workOrder.ticket_id,
+          unitId: workOrder.unit_id,
+          status: workOrder.status,
+          createdAt: workOrder.created_at,
+          ...(workOrder.tenant_photo_url && { tenantPhotoUrl: workOrder.tenant_photo_url })
+        };
+      });
+    }
+    
+    // If it's a tenant DTO for non-demo org, reject for now
+    throw new BadRequestException('Tenant submission not yet supported for this organization');
   }
 
   async createSimpleWorkOrder(orgId: string, dto: any): Promise<{ id: string; ticketId: string; unitId: string; status: string; createdAt: string; tenantPhotoUrl?: string }> {
