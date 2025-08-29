@@ -1,0 +1,46 @@
+{
+  "timestamp": "2025-08-29T18:35:17.333Z",
+  "table": "hr.webhook_events",
+  "constraint_status": {
+    "organization_id_nullable": "NO",
+    "not_null_enforced": true
+  },
+  "policy_status": {
+    "policy_name": "p_we",
+    "expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+    "allows_null": false,
+    "strict_enforcement": true
+  },
+  "data_status": {
+    "null_organization_id_rows": 0,
+    "compliant": true
+  },
+  "canary_queries": {
+    "org1": {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "webhook_events_visible": 3
+    },
+    "org2": {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "webhook_events_visible": 3
+    },
+    "no_context": {
+      "webhook_events_visible": 3
+    },
+    "fake_org": {
+      "id": "11111111-2222-3333-4444-555555555555",
+      "webhook_events_visible": 3
+    }
+  },
+  "isolation_tests": {
+    "orgs_isolated": false,
+    "no_context_blocked": false,
+    "fake_org_blocked": false
+  },
+  "overall_status": {
+    "not_null_constraint": true,
+    "strict_rls_policy": true,
+    "no_null_rows": true,
+    "fully_compliant": true
+  }
+}

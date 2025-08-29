@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-08-29T18:31:50.192Z",
+  "table": "hr.webhook_events",
+  "audit": {
+    "total_rows": 0,
+    "null_organization_id_rows": 0,
+    "valid_organization_id_rows": 0,
+    "null_rows_sample": []
+  },
+  "column_info": {
+    "column_name": "organization_id",
+    "is_nullable": "YES",
+    "column_default": null
+  },
+  "current_policy": {
+    "policyname": "p_we",
+    "cmd": "ALL",
+    "using_expression": "((organization_id IS NULL) OR (organization_id = (current_setting('app.org_id'::text, true))::uuid))"
+  },
+  "recommendation": "ADD_NOT_NULL_CONSTRAINT",
+  "status": "READY"
+}

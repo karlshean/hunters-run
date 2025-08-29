@@ -1,0 +1,145 @@
+[
+  {
+    "table_name": "events",
+    "policy_name": "p_ev",
+    "policy_command": "ALL",
+    "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+    "check_expression": null,
+    "mentions_app_org_id": "yes",
+    "mentions_app_current_organization": "no",
+    "permissive": "PERMISSIVE",
+    "roles": [
+      "{public}"
+    ]
+  },
+  {
+    "table_name": "legal_notices",
+    "policy_name": "p_ln",
+    "policy_command": "ALL",
+    "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+    "check_expression": null,
+    "mentions_app_org_id": "yes",
+    "mentions_app_current_organization": "no",
+    "permissive": "PERMISSIVE",
+    "roles": [
+      "{public}"
+    ]
+  },
+  {
+    "table_name": "notice_templates",
+    "policy_name": "p_nt",
+    "policy_command": "ALL",
+    "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+    "check_expression": null,
+    "mentions_app_org_id": "yes",
+    "mentions_app_current_organization": "no",
+    "permissive": "PERMISSIVE",
+    "roles": [
+      "{public}"
+    ]
+  },
+  {
+    "table_name": "payment_disputes",
+    "policy_name": "p_pd",
+    "policy_command": "ALL",
+    "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+    "check_expression": null,
+    "mentions_app_org_id": "yes",
+    "mentions_app_current_organization": "no",
+    "permissive": "PERMISSIVE",
+    "roles": [
+      "{public}"
+    ]
+  },
+  {
+    "table_name": "properties",
+    "policy_name": "properties_org_rls",
+    "policy_command": "ALL",
+    "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+    "check_expression": null,
+    "mentions_app_org_id": "yes",
+    "mentions_app_current_organization": "no",
+    "permissive": "PERMISSIVE",
+    "roles": [
+      "{public}"
+    ]
+  },
+  {
+    "table_name": "service_attempts",
+    "policy_name": "p_sa",
+    "policy_command": "ALL",
+    "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+    "check_expression": null,
+    "mentions_app_org_id": "yes",
+    "mentions_app_current_organization": "no",
+    "permissive": "PERMISSIVE",
+    "roles": [
+      "{public}"
+    ]
+  },
+  {
+    "table_name": "sms_messages",
+    "policy_name": "p_sms",
+    "policy_command": "ALL",
+    "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+    "check_expression": null,
+    "mentions_app_org_id": "yes",
+    "mentions_app_current_organization": "no",
+    "permissive": "PERMISSIVE",
+    "roles": [
+      "{public}"
+    ]
+  },
+  {
+    "table_name": "test_rls",
+    "policy_name": "test_rls_policy",
+    "policy_command": "ALL",
+    "using_expression": "(name = 'allowed'::text)",
+    "check_expression": null,
+    "mentions_app_org_id": "no",
+    "mentions_app_current_organization": "no",
+    "permissive": "PERMISSIVE",
+    "roles": [
+      "{public}"
+    ]
+  },
+  {
+    "table_name": "webhook_events",
+    "policy_name": "p_we",
+    "policy_command": "ALL",
+    "using_expression": "((organization_id IS NULL) OR (organization_id = (current_setting('app.org_id'::text, true))::uuid))",
+    "check_expression": null,
+    "mentions_app_org_id": "yes",
+    "mentions_app_current_organization": "no",
+    "permissive": "PERMISSIVE",
+    "roles": [
+      "{public}"
+    ]
+  },
+  {
+    "table_name": "work_order_transitions",
+    "policy_name": "work_order_transitions_org_rls",
+    "policy_command": "ALL",
+    "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+    "check_expression": null,
+    "mentions_app_org_id": "yes",
+    "mentions_app_current_organization": "no",
+    "permissive": "PERMISSIVE",
+    "roles": [
+      "{public}"
+    ]
+  },
+  {
+    "table_name": "work_orders",
+    "policy_name": "work_orders_org_rls",
+    "policy_command": "ALL",
+    "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+    "check_expression": null,
+    "mentions_app_org_id": "yes",
+    "mentions_app_current_organization": "no",
+    "permissive": "PERMISSIVE",
+    "roles": [
+      "{public}"
+    ]
+  }
+]

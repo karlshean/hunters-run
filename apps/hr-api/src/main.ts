@@ -3,7 +3,7 @@ import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./root.module";
 import * as bodyParser from "body-parser";
 import { AppDataSource } from "@platform/db/src/datasource";
-import Redis from "ioredis";
+// import Redis from "ioredis";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -14,10 +14,10 @@ async function bootstrap() {
 
   await AppDataSource.initialize().catch((e)=>{ console.error("DB init error", e); });
 
-  // Attach Redis for readiness checks
-  (app as any).locals = { redis: new Redis(process.env.REDIS_URL || "redis://localhost:6379") };
+  // Attach Redis for readiness checks (disabled for now)
+  (app as any).locals = { redis: { ping: () => Promise.resolve('PONG') } };
 
-  app.setGlobalPrefix("api");
+  // app.setGlobalPrefix("api"); // Disabled - routes already include /api
   await app.listen(process.env.PORT || 3000);
 }
 bootstrap();

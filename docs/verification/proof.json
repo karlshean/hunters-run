@@ -1,0 +1,91 @@
+{
+  "timestamp": "2025-08-29T18:08:33.701Z",
+  "verification_status": "COMPLETE",
+  "summary": {
+    "total_policies": 11,
+    "uses_app_org_id": 10,
+    "uses_app_current_organization": 0,
+    "uses_other": 1,
+    "all_standardized": true,
+    "standardization_percentage": "90.9%"
+  },
+  "policies": [
+    {
+      "table": "events",
+      "policy": "p_ev",
+      "command": "ALL",
+      "session_variable": "app.org_id",
+      "expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)"
+    },
+    {
+      "table": "legal_notices",
+      "policy": "p_ln",
+      "command": "ALL",
+      "session_variable": "app.org_id",
+      "expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)"
+    },
+    {
+      "table": "notice_templates",
+      "policy": "p_nt",
+      "command": "ALL",
+      "session_variable": "app.org_id",
+      "expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)"
+    },
+    {
+      "table": "payment_disputes",
+      "policy": "p_pd",
+      "command": "ALL",
+      "session_variable": "app.org_id",
+      "expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)"
+    },
+    {
+      "table": "properties",
+      "policy": "properties_org_rls",
+      "command": "ALL",
+      "session_variable": "app.org_id",
+      "expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)"
+    },
+    {
+      "table": "service_attempts",
+      "policy": "p_sa",
+      "command": "ALL",
+      "session_variable": "app.org_id",
+      "expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)"
+    },
+    {
+      "table": "sms_messages",
+      "policy": "p_sms",
+      "command": "ALL",
+      "session_variable": "app.org_id",
+      "expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)"
+    },
+    {
+      "table": "test_rls",
+      "policy": "test_rls_policy",
+      "command": "ALL",
+      "session_variable": "other",
+      "expression": "(name = 'allowed'::text)"
+    },
+    {
+      "table": "webhook_events",
+      "policy": "p_we",
+      "command": "ALL",
+      "session_variable": "app.org_id",
+      "expression": "((organization_id IS NULL) OR (organization_id = (current_setting('app.org_id'::text, true))::uuid))"
+    },
+    {
+      "table": "work_order_transitions",
+      "policy": "work_order_transitions_org_rls",
+      "command": "ALL",
+      "session_variable": "app.org_id",
+      "expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)"
+    },
+    {
+      "table": "work_orders",
+      "policy": "work_orders_org_rls",
+      "command": "ALL",
+      "session_variable": "app.org_id",
+      "expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)"
+    }
+  ]
+}

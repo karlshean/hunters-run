@@ -1,0 +1,129 @@
+{
+  "timestamp": "2025-08-29T18:44:33.680Z",
+  "total_policies": 11,
+  "statistics": {
+    "using_app_org_id": 10,
+    "using_app_current_organization": 0,
+    "using_other": 1,
+    "using_none": 0,
+    "check_app_org_id": 1,
+    "check_app_current_organization": 0,
+    "check_other": 0,
+    "check_none": 10
+  },
+  "policies": [
+    {
+      "table": "events",
+      "policy": "p_ev",
+      "command": "ALL",
+      "using_session_var": "app.org_id",
+      "check_session_var": "none",
+      "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+      "check_expression": null,
+      "needs_migration": false
+    },
+    {
+      "table": "legal_notices",
+      "policy": "p_ln",
+      "command": "ALL",
+      "using_session_var": "app.org_id",
+      "check_session_var": "none",
+      "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+      "check_expression": null,
+      "needs_migration": false
+    },
+    {
+      "table": "notice_templates",
+      "policy": "p_nt",
+      "command": "ALL",
+      "using_session_var": "app.org_id",
+      "check_session_var": "none",
+      "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+      "check_expression": null,
+      "needs_migration": false
+    },
+    {
+      "table": "payment_disputes",
+      "policy": "p_pd",
+      "command": "ALL",
+      "using_session_var": "app.org_id",
+      "check_session_var": "none",
+      "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+      "check_expression": null,
+      "needs_migration": false
+    },
+    {
+      "table": "properties",
+      "policy": "properties_org_rls",
+      "command": "ALL",
+      "using_session_var": "app.org_id",
+      "check_session_var": "none",
+      "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+      "check_expression": null,
+      "needs_migration": false
+    },
+    {
+      "table": "service_attempts",
+      "policy": "p_sa",
+      "command": "ALL",
+      "using_session_var": "app.org_id",
+      "check_session_var": "none",
+      "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+      "check_expression": null,
+      "needs_migration": false
+    },
+    {
+      "table": "sms_messages",
+      "policy": "p_sms",
+      "command": "ALL",
+      "using_session_var": "app.org_id",
+      "check_session_var": "none",
+      "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+      "check_expression": null,
+      "needs_migration": false
+    },
+    {
+      "table": "test_rls",
+      "policy": "test_rls_policy",
+      "command": "ALL",
+      "using_session_var": "other",
+      "check_session_var": "none",
+      "using_expression": "(name = 'allowed'::text)",
+      "check_expression": null,
+      "needs_migration": false
+    },
+    {
+      "table": "webhook_events",
+      "policy": "p_we",
+      "command": "ALL",
+      "using_session_var": "app.org_id",
+      "check_session_var": "app.org_id",
+      "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+      "check_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+      "needs_migration": false
+    },
+    {
+      "table": "work_order_transitions",
+      "policy": "work_order_transitions_org_rls",
+      "command": "ALL",
+      "using_session_var": "app.org_id",
+      "check_session_var": "none",
+      "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+      "check_expression": null,
+      "needs_migration": false
+    },
+    {
+      "table": "work_orders",
+      "policy": "work_orders_org_rls",
+      "command": "ALL",
+      "using_session_var": "app.org_id",
+      "check_session_var": "none",
+      "using_expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+      "check_expression": null,
+      "needs_migration": false
+    }
+  ],
+  "migration_needed": false,
+  "policies_needing_migration": [],
+  "fully_standardized": true
+}

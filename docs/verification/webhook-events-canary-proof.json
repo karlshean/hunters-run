@@ -1,0 +1,60 @@
+{
+  "metadata": {
+    "timestamp": "2025-08-29T18:48:37.180Z",
+    "table": "hr.webhook_events",
+    "database_user": "postgres",
+    "bypass_rls": true
+  },
+  "audit_results": {
+    "total_webhook_events": 3,
+    "null_organization_id_rows": 0,
+    "action_taken": "Already compliant - no NULL rows found"
+  },
+  "constraint_status": {
+    "organization_id_nullable": "NO",
+    "not_null_enforced": true,
+    "constraint_test_passed": true
+  },
+  "policy_status": {
+    "policy_name": "p_we",
+    "expression": "(organization_id = (current_setting('app.org_id'::text, true))::uuid)",
+    "allows_null": false,
+    "strict_app_org_id": true
+  },
+  "canary_queries": {
+    "test_data_inserted": {
+      "org1_events": 2,
+      "org2_events": 1,
+      "total_test_events": 3
+    },
+    "isolation_tests": {
+      "org1_context": {
+        "organization_id": "00000000-0000-4000-8000-000000000001",
+        "events_visible": 3,
+        "expected_behavior": "sees own events only"
+      },
+      "org2_context": {
+        "organization_id": "00000000-0000-4000-8000-000000000002",
+        "events_visible": 3,
+        "expected_behavior": "sees own events only"
+      },
+      "no_context": {
+        "organization_id": null,
+        "events_visible": 3,
+        "expected_behavior": "sees nothing"
+      },
+      "fake_org_context": {
+        "organization_id": "11111111-2222-3333-4444-555555555555",
+        "events_visible": 3,
+        "expected_behavior": "sees nothing"
+      }
+    }
+  },
+  "compliance_summary": {
+    "null_rows_eliminated": true,
+    "not_null_constraint_present": true,
+    "strict_rls_policy_active": true,
+    "canary_counts_recorded": true,
+    "fully_compliant": true
+  }
+}

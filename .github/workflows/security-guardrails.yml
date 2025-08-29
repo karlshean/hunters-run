@@ -1,0 +1,281 @@
+name: Security Guardrails
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '20.x'
+
+jobs:
+  rls-security-check:
+    name: RLS Security Verification
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --ignore-scripts
+
+    - name: Setup test database
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+      run: |
+        PGPASSWORD=postgres createdb -h localhost -U postgres test_db
+        npm run migrate
+
+    - name: Run RLS Policy Verification
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test_db
+        DB_SSL_MODE: disabled
+      run: |
+        echo "🔒 Verifying RLS policies are active..."
+        node -e "
+          const { Client } = require('pg');
+          const client = new Client({ 
+            connectionString: process.env.DATABASE_URL,
+            ssl: false 
+          });
+          
+          (async () => {
+            await client.connect();
+            
+            // Verify RLS is enabled on critical tables
+            const rlsTables = await client.query(\`
+              SELECT schemaname, tablename 
+              FROM pg_tables 
+              WHERE schemaname IN ('hr', 'platform') 
+              AND rowsecurity = true
+              ORDER BY schemaname, tablename
+            \`);
+            
+            console.log('Tables with RLS enabled:', rlsTables.rows.length);
+            
+            if (rlsTables.rows.length === 0) {
+              console.error('❌ CRITICAL: No RLS policies found');
+              process.exit(1);
+            }
+            
+            // Verify RLS policies exist
+            const policies = await client.query(\`
+              SELECT schemaname, tablename, policyname, cmd
+              FROM pg_policies 
+              WHERE schemaname IN ('hr', 'platform')
+              ORDER BY schemaname, tablename
+            \`);
+            
+            console.log('RLS policies found:', policies.rows.length);
+            
+            if (policies.rows.length === 0) {
+              console.error('❌ CRITICAL: No RLS policies configured');
+              process.exit(1);
+            }
+            
+            console.log('✅ RLS security guardrails verified');
+            await client.end();
+          })().catch(err => {
+            console.error('❌ RLS verification failed:', err.message);
+            process.exit(1);
+          });
+        "
+
+  auth-regression-check:
+    name: Authentication Regression Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js  
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --ignore-scripts
+
+    - name: Verify Firebase Config Structure
+      env:
+        FIREBASE_PROJECT_ID: test-project-id
+        FIREBASE_CLIENT_EMAIL: test@test.iam.gserviceaccount.com  
+        FIREBASE_PRIVATE_KEY: "-----BEGIN PRIVATE KEY-----\nTEST_KEY_CONTENT\n-----END PRIVATE KEY-----"
+      run: |
+        echo "🔥 Testing Firebase configuration loading..."
+        node scripts/detect-env-path.js
+        
+        echo "🔐 Verifying auth configuration structure..."
+        node -e "
+          const requiredEnvVars = [
+            'FIREBASE_PROJECT_ID',
+            'FIREBASE_CLIENT_EMAIL', 
+            'FIREBASE_PRIVATE_KEY'
+          ];
+          
+          const missing = requiredEnvVars.filter(key => !process.env[key]);
+          
+          if (missing.length > 0) {
+            console.error('❌ Missing Firebase env vars:', missing);
+            process.exit(1);
+          }
+          
+          console.log('✅ Firebase configuration structure verified');
+        "
+
+    - name: TypeScript Build Check
+      run: |
+        echo "🔨 Verifying TypeScript builds without errors..."
+        cd apps/hr-api && npm run build
+        echo "✅ TypeScript compilation successful"
+
+    - name: Cross-Platform Script Check  
+      run: |
+        echo "🖥️ Testing cross-platform script compatibility..."
+        node scripts/diagnostics/test-smoke.mjs
+        echo "✅ Cross-platform scripts working"
+
+  dependency-security-check:
+    name: Dependency Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4  
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci --ignore-scripts
+
+    - name: Run Security Audit
+      run: |
+        echo "🛡️ Running dependency security audit..."
+        node scripts/dependency-audit.js
+        echo "✅ Dependency audit completed"
+
+    - name: Check for High-Risk Dependencies
+      run: |
+        echo "⚠️ Checking for critical security vulnerabilities..."
+        # This would typically run npm audit, but we'll use our custom audit
+        node -e "
+          const fs = require('fs');
+          const auditPath = 'reports/artifacts/dep-drift.json';
+          
+          if (fs.existsSync(auditPath)) {
+            const audit = JSON.parse(fs.readFileSync(auditPath, 'utf8'));
+            console.log('Audit status:', audit.auditStatus);
+            
+            if (audit.auditStatus === 'MAJOR_DRIFT' && audit.summary.totalUpdatesAvailable > 20) {
+              console.error('❌ CRITICAL: Too many outdated dependencies detected');
+              process.exit(1);
+            }
+            
+            console.log('✅ Dependency security acceptable');
+          } else {
+            console.log('⚠️ No audit report found, skipping detailed check');
+          }
+        "
+
+  integration-health-check:
+    name: System Integration Health
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+
+    - name: Install dependencies  
+      run: npm ci --ignore-scripts
+
+    - name: Environment Configuration Check
+      run: |
+        echo "⚙️ Verifying environment configuration patterns..."
+        
+        # Check that sensitive configs are not hardcoded
+        if grep -r "password.*=" apps/ packages/ --exclude-dir=node_modules --exclude="*.md" | grep -v "DATABASE_URL.*process.env" | head -5; then
+          echo "❌ CRITICAL: Hardcoded credentials detected"
+          exit 1
+        fi
+        
+        # Check that RLS session variables are used correctly
+        if grep -r "app\.org_id" apps/ packages/ --exclude-dir=node_modules | grep -v "set_config" | head -5; then
+          echo "⚠️ WARNING: Non-standard org_id usage detected"
+        fi
+        
+        echo "✅ Environment configuration patterns verified"
+
+    - name: Database Connection Pattern Check
+      run: |
+        echo "🔗 Verifying database connection patterns..."
+        
+        # Ensure no SET ROLE in production code
+        if grep -r "SET ROLE" apps/ packages/ --exclude-dir=node_modules --exclude="*.md" | head -5; then
+          echo "❌ CRITICAL: SET ROLE found in production code"
+          exit 1  
+        fi
+        
+        # Verify proper RLS session variable usage
+        if ! grep -r "set_config.*app\.org_id" apps/ --exclude-dir=node_modules | head -1; then
+          echo "⚠️ WARNING: RLS session variables not found"
+        else
+          echo "✅ RLS session variable pattern verified"
+        fi
+        
+        echo "✅ Database connection patterns verified"
+
+  summary:
+    name: Security Guardrails Summary
+    runs-on: ubuntu-latest
+    needs: [rls-security-check, auth-regression-check, dependency-security-check, integration-health-check]
+    if: always()
+    
+    steps:
+    - name: Aggregate Results
+      run: |
+        echo "🛡️ SECURITY GUARDRAILS SUMMARY"
+        echo "================================"
+        echo "RLS Security: ${{ needs.rls-security-check.result }}"
+        echo "Auth Regression: ${{ needs.auth-regression-check.result }}"  
+        echo "Dependency Security: ${{ needs.dependency-security-check.result }}"
+        echo "Integration Health: ${{ needs.integration-health-check.result }}"
+        echo ""
+        
+        if [[ "${{ needs.rls-security-check.result }}" == "success" ]] && \
+           [[ "${{ needs.auth-regression-check.result }}" == "success" ]] && \
+           [[ "${{ needs.dependency-security-check.result }}" == "success" ]] && \
+           [[ "${{ needs.integration-health-check.result }}" == "success" ]]; then
+          echo "✅ All security guardrails passed - safe to deploy"
+        else
+          echo "❌ Security guardrails failed - deployment blocked"
+          exit 1
+        fi
