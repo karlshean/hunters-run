@@ -7,3 +7,33 @@ coverage
 .vscode
 .idea
 pgdata
+reports/
+logs/
+
+# Secrets and credentials
+*.json.key
+*firebase-adminsdk*.json
+*.pem
+*.p12
+fix-database-connection.env
+token.txt
+token.html
+token-generator.html
+
+# Temporary files
+debug-results.txt
+api.log
+nul
+validation-output.txt
+identity-tests-output.txt
+*.log
+
+# Evidence bundles (contain redacted info, generate fresh)
+evidence-bundle-*.zip
+evidence/
+
+# Test files
+test-*.mjs
+test-*.sh
+test-*.ps1
+setup-test-orgs.mjs
