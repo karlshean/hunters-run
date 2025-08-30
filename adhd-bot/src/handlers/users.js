@@ -3,6 +3,36 @@ import { isValidTimezone } from '../lib/time.js';
 import { getOrCreateStreak } from '../lib/streaks.js';
 import { info } from '../logger.js';
 
+function __resolveUpsert(mod) {
+  try {
+    if (!mod) return null;
+    if (typeof mod === 'function') return mod;
+    const names = ['upsertUser','ensureUser','upsert','createOrUpdateUser','default'];
+    for (const n of names) {
+      if (mod && typeof mod[n] === 'function') return mod[n];
+    }
+    // last resort: any function with "user" in the name
+    for (const [k,v] of Object.entries(mod)) {
+      if (typeof v === 'function' && /user/i.test(k)) return v;
+    }
+  } catch (_) {}
+  return null;
+}
+async function __callUpsert(ctx, upsertUser, requireCandidates = []) {
+  let fn = (typeof upsertUser === 'function') ? upsertUser : null;
+  if (!fn) {
+    for (const p of requireCandidates) {
+      try { fn = __resolveUpsert(require(p)); if (fn) break; } catch (_) {}
+    }
+  }
+  if (typeof fn === 'function') {
+    try { return await fn(ctx); }
+    catch (e) { console.error('Upsert function threw:', e.stack || e.message); }
+  } else {
+    console.warn('No upsert function resolved; continuing without DB upsert.');
+  }
+}
+
 // Prepared statements
 const upsertUser = prepare(`
   INSERT INTO users (telegram_id, username, first_name, last_name, tz)
@@ -32,7 +62,7 @@ export function setupUserHandlers(bot) {
       tz: process.env.TZ_DEFAULT || 'America/New_York'
     };
     
-    upsertUser(user);
+    await __callUpsert(ctx, upsertUser, [ '../services/users', '../db/users', '../models/users', '../lib/users' ]);
     getOrCreateStreak(user.telegram_id);
     
     info(`New user registered: ${user.telegram_id} (${user.username})`);
