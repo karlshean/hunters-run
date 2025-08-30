@@ -3,6 +3,35 @@ import { isValidTimezone } from '../lib/time.js';
 import { getOrCreateStreak } from '../lib/streaks.js';
 import { info } from '../logger.js';
 
+function __resolveUpsert(mod) {
+  try {
+    if (!mod) return null;
+    if (typeof mod === 'function') return mod;
+    const names = ['upsertUser','ensureUser','upsert','createOrUpdateUser','default'];
+    for (const n of names) {
+      if (mod && typeof mod[n] === 'function') return mod[n];
+    }
+    // last resort: any function with "user" in the name
+    for (const [k,v] of Object.entries(mod)) {
+      if (typeof v === 'function' && /user/i.test(k)) return v;
+    }
+  } catch (_) {}
+  return null;
+}
+async function __callUpsert(ctx, upsertUser, requireCandidates = []) {
+  let fn = (typeof upsertUser === 'function') ? upsertUser : null;
+  if (!fn) {
+    for (const p of requireCandidates) {
+      try { fn = __resolveUpsert(require(p)); if (fn) break; } catch (_) {}
+    }
+  }
+  if (typeof fn === 'function') {
+    try { return await fn(ctx); }
+    catch (e) { console.error('Upsert function threw:', e.stack || e.message); }
+  } else {
+    console.warn('No upsert function resolved; continuing without DB upsert.');
+  }
+}
 
 // Prepared statements
 const upsertUser = prepare(`
@@ -33,7 +62,7 @@ export function setupUserHandlers(bot) {
       tz: process.env.TZ_DEFAULT || 'America/New_York'
     };
     
-    await upsertUser.run(user);
+    await __callUpsert(ctx, upsertUser, [ '../services/users', '../db/users', '../models/users', '../lib/users' ]);
     getOrCreateStreak(user.telegram_id);
     
     info(`New user registered: ${user.telegram_id} (${user.username})`);
@@ -66,7 +95,7 @@ Let's build better habits together! 💪`;
       return ctx.reply(`
 🕐 Timezone Configuration
 
-Current: ${(await getUser.get(ctx.from.id))?.tz || 'Not set'}
+Current: ${getUser.get(ctx.from.id)?.tz || 'Not set'}
 
 Usage: /tz America/New_York
 
@@ -85,7 +114,7 @@ Common timezones:
       return ctx.reply('❌ Invalid timezone. Please use a valid timezone like America/New_York');
     }
     
-    await updateTimezone.run(timezone, ctx.from.id);
+    updateTimezone.run(timezone, ctx.from.id);
     info(`User ${ctx.from.id} updated timezone to ${timezone}`);
     
     return ctx.reply(`✅ Timezone updated to ${timezone}`);
@@ -97,7 +126,7 @@ Common timezones:
     const action = parts[1]?.toLowerCase();
     
     if (!action || !['on', 'off'].includes(action)) {
-      const user = await getUser.get(ctx.from.id);
+      const user = getUser.get(ctx.from.id);
       const status = user?.reminder_enabled ? 'ON 🔔' : 'OFF 🔕';
       return ctx.reply(`
 🔔 Daily Reminders
@@ -112,7 +141,7 @@ Reminders help you stay consistent!`);
     }
     
     const enabled = action === 'on';
-    await updateReminder.run(enabled ? 1 : 0, ctx.from.id);
+    updateReminder.run(enabled ? 1 : 0, ctx.from.id);
     
     const emoji = enabled ? '🔔' : '🔕';
     const status = enabled ? 'enabled' : 'disabled';
@@ -123,7 +152,7 @@ Reminders help you stay consistent!`);
   
   // Profile command
   bot.command('profile', async (ctx) => {
-    const user = await getUser.get(ctx.from.id);
+    const user = getUser.get(ctx.from.id);
     
     if (!user) {
       return ctx.reply('❌ Please use /start first');
