@@ -1,9 +1,8 @@
-﻿
-const { registerHandlers } = require('./handlers');import 'dotenv/config';
+import 'dotenv/config';
 import { Telegraf } from 'telegraf';
 import { openDb, closeDb } from './db/sqlite.js';
 import { info, error, success } from './logger.js';
-import { setupHandlers } from './handlers/index.js';
+import { registerHandlers } from './handlers/index.js';
 import { startReminderService } from './services/reminder.js';
 import { trackEvent } from './services/analytics.js';
 
@@ -46,28 +45,29 @@ bot.use(async (ctx, next) => {
 // Error handling middleware
 bot.catch((err, ctx) => {
   error(`Bot error for ${ctx.from?.id}:`, err);
-  ctx.reply('âŒ Something went wrong. Please try again later.');
+  ctx.reply('⌚ Something went wrong. Please try again later.');
 });
 
-// Setup all command handlers
-setupHandlers(bot);
+// Setup all command handlers and launch bot
+async function startBot() {
+  try {
+    await registerHandlers(bot);
+    
+    // Start reminder service if enabled
+    if (process.env.ENABLE_REMINDERS === 'true') {
+      startReminderService(bot);
+      info('Reminder service started');
+    }
 
-// Start reminder service if enabled
-if (process.env.ENABLE_REMINDERS === 'true') {
-  startReminderService(bot);
-  info('Reminder service started');
-}
-
-// Launch bot
-bot.launch()
-  .then(() => {
-    success(`ðŸ¤– ${process.env.BOT_NAME || 'ADHD Bot'} started successfully!`);
+    // Launch bot
+    await bot.launch();
+    success(`🤖 ${process.env.BOT_NAME || 'ADHD Bot'} started successfully!`);
     success(`Bot username: @${bot.botInfo?.username}`);
-  })
-  .catch(err => {
+  } catch (err) {
     error('Failed to start bot:', err);
     process.exit(1);
-  });
+  }
+}
 
 // Graceful shutdown
 const shutdown = (signal) => {
@@ -80,3 +80,5 @@ const shutdown = (signal) => {
 process.once('SIGINT', () => shutdown('SIGINT'));
 process.once('SIGTERM', () => shutdown('SIGTERM'));
 
+// Start the bot
+startBot();
