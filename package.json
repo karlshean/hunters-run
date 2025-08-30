@@ -4,21 +4,35 @@
   "private": true,
   "description": "Hunters Run monorepo (apps + packages)",
   "engines": {
-    "node": ">=20.0.0",
+    "node": "22.18.0",
     "npm": ">=10.0.0"
   },
+  "packageManager": "npm@10.9.0",
   "workspaces": [
     "apps/*",
     "packages/*"
   ],
   "scripts": {
-    "postinstall": "npm -ws run postinstall --if-present",
+    "postinstall": "npm -ws run postinstall --if-present && husky",
     "build": "npm -ws run build --if-present",
     "dev:hr": "npm --workspace @hunters-run/api run start:dev",
     "migrate": "npm --workspace @hunters-run/db run migrate",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "lint": "npm -ws run lint --if-present",
-    "test": "npm -ws run test --if-present"
+    "test": "npm -ws run test --if-present",
+    "format": "prettier --write \"**/*.{js,ts,json,md,yaml,yml}\"",
+    "format:check": "prettier --check \"**/*.{js,ts,json,md,yaml,yml}\"",
+    "lint:fix": "npm -ws run lint:fix --if-present",
+    "precommit": "lint-staged",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.0.0",
+    "lint-staged": "^15.2.0",
+    "prettier": "^3.1.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0"
   }
 }

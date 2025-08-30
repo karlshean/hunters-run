@@ -1,0 +1,199 @@
+{
+  "timestamp": "2025-08-29T22:04:11.957Z",
+  "tests": [
+    {
+      "name": "Node.js version pinning",
+      "status": "PASS",
+      "details": "Node version pinned to v22.18.0 in .nvmrc",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.958Z"
+    },
+    {
+      "name": "Package.json Node engine",
+      "status": "PASS",
+      "details": "Node engine pinned to 22.18.0",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.959Z"
+    },
+    {
+      "name": "Package manager pinning",
+      "status": "PASS",
+      "details": "Package manager pinned: npm@10.9.0",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.959Z"
+    },
+    {
+      "name": "CI toolchain workflow",
+      "status": "PASS",
+      "details": "GitHub workflow uses .nvmrc for Node version",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.959Z"
+    },
+    {
+      "name": "Environment validation",
+      "status": "PASS",
+      "details": "dotenv-safe with required validation implemented",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.960Z"
+    },
+    {
+      "name": ".env.example template",
+      "status": "PASS",
+      "details": "All required environment variables documented",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.960Z"
+    },
+    {
+      "name": "Firebase dual auth",
+      "status": "PASS",
+      "details": "Both SERVICE_ACCOUNT_PATH and SERVICE_ACCOUNT_JSON supported",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.961Z"
+    },
+    {
+      "name": "Database role script",
+      "status": "PASS",
+      "details": "app_user and migration_user roles defined",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.961Z"
+    },
+    {
+      "name": "Database role probe",
+      "status": "PASS",
+      "details": "Role verification tool checks user and RLS bypass",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.962Z"
+    },
+    {
+      "name": "Backup automation",
+      "status": "PASS",
+      "details": "Database backup script with schema selection",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.962Z"
+    },
+    {
+      "name": "Restore verification",
+      "status": "PASS",
+      "details": "Database restore script with verification",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.962Z"
+    },
+    {
+      "name": "OpenAPI specification",
+      "status": "WARN",
+      "details": "OpenAPI file exists but version/structure unclear",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.963Z"
+    },
+    {
+      "name": "API DTOs",
+      "status": "PASS",
+      "details": "Pagination and standard response DTOs implemented",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.963Z"
+    },
+    {
+      "name": "request-id.middleware middleware",
+      "status": "PASS",
+      "details": "request-id.middleware middleware implemented",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.964Z"
+    },
+    {
+      "name": "idempotency.middleware middleware",
+      "status": "PASS",
+      "details": "idempotency.middleware middleware implemented",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.964Z"
+    },
+    {
+      "name": "Security middleware",
+      "status": "PASS",
+      "details": "All security features: helmet, rateLimit, corsOptions",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.964Z"
+    },
+    {
+      "name": "Performance monitoring",
+      "status": "PASS",
+      "details": "Response time and metrics collection implemented",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.965Z"
+    },
+    {
+      "name": "Security dependencies",
+      "status": "PASS",
+      "details": "Security packages installed: helmet, express-rate-limit, compression",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.965Z"
+    },
+    {
+      "name": "Renovate automation",
+      "status": "PASS",
+      "details": "Dependency automation with vulnerability alerts",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.966Z"
+    },
+    {
+      "name": "Husky pre-commit",
+      "status": "PASS",
+      "details": "pre-commit hook implemented with validation",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.966Z"
+    },
+    {
+      "name": "Husky commit-msg",
+      "status": "PASS",
+      "details": "commit-msg hook implemented with validation",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.967Z"
+    },
+    {
+      "name": ".eslintrc.js config",
+      "status": "PASS",
+      "details": ".eslintrc.js configuration present",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.967Z"
+    },
+    {
+      "name": ".prettierrc config",
+      "status": "PASS",
+      "details": ".prettierrc configuration present",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.967Z"
+    },
+    {
+      "name": ".lintstagedrc.js config",
+      "status": "PASS",
+      "details": ".lintstagedrc.js configuration present",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.967Z"
+    },
+    {
+      "name": "CI dependency checks",
+      "status": "PASS",
+      "details": "NPM audit and license checking in CI",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:11.968Z"
+    },
+    {
+      "name": "Project build",
+      "status": "FAIL",
+      "details": "Build failed: Command failed: npm run build\nnpm error Lifecycle script `build` failed with error:\nnpm error code 2\nnpm error path C:\\Users\\KA\\myprojects3\\hunters-run\\apps\\hr-api\nnpm error workspace @apps/hr-api@0.1.0\nnpm error location C:\\Users\\KA\\myprojects3\\hunters-run\\apps\\hr-api\nnpm error command failed\nnpm error command C:\\WINDOWS\\system32\\cmd.exe /d /s /c tsc -p tsconfig.json\n\n",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:26.005Z"
+    },
+    {
+      "name": "Package validation",
+      "status": "PASS",
+      "details": "All packages validate successfully",
+      "evidence": null,
+      "timestamp": "2025-08-29T22:04:26.921Z"
+    }
+  ],
+  "summary": {
+    "passed": 25,
+    "failed": 1,
+    "warnings": 1
+  }
+}

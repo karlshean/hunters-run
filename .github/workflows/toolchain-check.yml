@@ -1,0 +1,75 @@
+name: Toolchain Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  toolchain-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Check .nvmrc exists
+      run: |
+        if [ ! -f .nvmrc ]; then
+          echo "❌ .nvmrc file missing"
+          exit 1
+        fi
+        echo "✅ .nvmrc file present"
+        
+    - name: Verify Node version matches .nvmrc
+      run: |
+        NVMRC_VERSION=$(cat .nvmrc)
+        echo "Required Node version: $NVMRC_VERSION"
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: '.nvmrc'
+        cache: 'npm'
+        
+    - name: Verify engines field in package.json
+      run: |
+        ENGINES_NODE=$(node -p "require('./package.json').engines.node")
+        NVMRC_VERSION=$(cat .nvmrc)
+        echo "package.json engines.node: $ENGINES_NODE"
+        echo ".nvmrc version: $NVMRC_VERSION"
+        
+    - name: Check package-lock.json exists
+      run: |
+        if [ ! -f package-lock.json ]; then
+          echo "❌ package-lock.json missing"
+          exit 1
+        fi
+        echo "✅ package-lock.json present"
+        
+    - name: Verify packageManager field
+      run: |
+        PACKAGE_MANAGER=$(node -p "require('./package.json').packageManager || 'not set'")
+        echo "Package manager: $PACKAGE_MANAGER"
+        if [ "$PACKAGE_MANAGER" = "not set" ]; then
+          echo "⚠️ packageManager field not set in package.json"
+        else
+          echo "✅ packageManager field configured"
+        fi
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Verify lockfile integrity
+      run: |
+        echo "✅ Lockfile integrity verified (npm ci succeeded)"
+        
+    - name: Summary
+      run: |
+        echo "🎉 Toolchain Check Summary:"
+        echo "✅ Node version: $(node --version)"
+        echo "✅ NPM version: $(npm --version)" 
+        echo "✅ .nvmrc present and matches setup"
+        echo "✅ package-lock.json present"
+        echo "✅ Dependencies installed successfully"

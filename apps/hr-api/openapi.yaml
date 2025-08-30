@@ -1,0 +1,637 @@
+openapi: 3.0.0
+info:
+  title: Hunters Run HR API
+  description: Property management and work order system API
+  version: 1.0.0
+  contact:
+    name: Hunters Run Platform Team
+servers:
+  - url: /api
+    description: API Base
+security:
+  - organizationAuth: []
+  - idempotencyKey: []
+paths:
+  /health:
+    get:
+      tags:
+        - Health & Monitoring
+      summary: Basic health check
+      description: Returns service status without dependencies
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  service:
+                    type: string
+                    example: hr-api
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: '2025-01-20T10:30:00.000Z'
+                  version:
+                    type: string
+                    example: '1.0.0'
+                required:
+                  - success
+                  - service
+                  - timestamp
+                  - version
+  /ready:
+    get:
+      tags:
+        - Health & Monitoring
+      summary: Readiness probe with dependencies
+      description: Checks database and Redis connectivity for K8s readiness
+      responses:
+        '200':
+          description: All dependencies are ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  db:
+                    type: boolean
+                    example: true
+                  redis:
+                    type: boolean
+                    example: true
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: '2025-01-20T10:30:00.000Z'
+                required:
+                  - success
+                  - db
+                  - redis
+                  - timestamp
+        '503':
+          description: One or more dependencies failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  db:
+                    type: boolean
+                    example: false
+                  redis:
+                    type: boolean
+                    example: true
+                  error:
+                    type: string
+                    example: db_failed
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: '2025-01-20T10:30:00.000Z'
+                required:
+                  - success
+                  - db
+                  - redis
+                  - timestamp
+  /metrics:
+    get:
+      tags:
+        - Health & Monitoring
+      summary: System metrics and security status
+      description: Database connectivity, effective user, RLS status (no secrets exposed)
+      responses:
+        '200':
+          description: System metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  metrics:
+                    type: object
+                    properties:
+                      database:
+                        type: object
+                        properties:
+                          connected:
+                            type: boolean
+                            example: true
+                          current_user:
+                            type: string
+                            example: app_user
+                          session_user:
+                            type: string
+                            example: app_user
+                          bypass_rls:
+                            type: boolean
+                            example: false
+                          is_superuser:
+                            type: boolean
+                            example: false
+                      rls_status:
+                        type: object
+                        properties:
+                          properties_table_rls:
+                            type: boolean
+                            example: true
+                          work_orders_table_rls:
+                            type: boolean
+                            example: true
+                          policies_count:
+                            type: number
+                            example: 5
+                      runtime:
+                        type: object
+                        properties:
+                          node_version:
+                            type: string
+                            example: v22.18.0
+                          uptime_seconds:
+                            type: number
+                            example: 3600
+                          memory_usage_mb:
+                            type: number
+                            example: 128
+                          env_mode:
+                            type: string
+                            example: production
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: '2025-01-20T10:30:00.000Z'
+                required:
+                  - success
+                  - metrics
+                  - timestamp
+  /v1/work-orders:
+    get:
+      tags:
+        - Work Orders
+      summary: List work orders for organization
+      description: Retrieves work orders with pagination and filtering
+      parameters:
+        - name: x-org-id
+          in: header
+          description: Organization UUID
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 00000000-0000-4000-8000-000000000001
+        - name: page
+          in: query
+          description: Page number (1-based)
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 1
+        - name: limit
+          in: query
+          description: Items per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: sortBy
+          in: query
+          description: Sort field
+          schema:
+            type: string
+            default: created_at
+        - name: sortOrder
+          in: query
+          description: Sort direction
+          schema:
+            type: string
+            enum: [ASC, DESC]
+            default: DESC
+      responses:
+        '200':
+          description: Work orders retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WorkOrder'
+                  count:
+                    type: integer
+                    example: 25
+                  meta:
+                    type: object
+                    properties:
+                      organizationId:
+                        type: string
+                        format: uuid
+                        example: 00000000-0000-4000-8000-000000000001
+                required:
+                  - success
+                  - items
+                  - count
+                  - meta
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+    post:
+      tags:
+        - Work Orders
+      summary: Create new work order
+      description: Creates a new work order for the organization
+      parameters:
+        - name: x-org-id
+          in: header
+          description: Organization UUID
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 00000000-0000-4000-8000-000000000001
+        - name: idempotency-key
+          in: header
+          description: Idempotency key for safe retries
+          required: false
+          schema:
+            type: string
+            format: uuid
+            example: 550e8400-e29b-41d4-a716-446655440000
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: "Fix leaky faucet in unit 2A"
+                  minLength: 1
+                  maxLength: 255
+                description:
+                  type: string
+                  example: "Tenant reported dripping faucet in kitchen sink"
+                  maxLength: 2000
+                priority:
+                  type: string
+                  enum: [low, medium, high, urgent]
+                  default: medium
+                property_id:
+                  type: string
+                  format: uuid
+                  example: 11111111-2222-3333-4444-555555555555
+              required:
+                - title
+      responses:
+        '201':
+          description: Work order created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  workOrder:
+                    $ref: '#/components/schemas/WorkOrder'
+                  meta:
+                    type: object
+                    properties:
+                      organizationId:
+                        type: string
+                        format: uuid
+                        example: 00000000-0000-4000-8000-000000000001
+                required:
+                  - success
+                  - workOrder
+                  - meta
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+  /v1/work-orders/{id}:
+    patch:
+      tags:
+        - Work Orders
+      summary: Update work order
+      description: Updates an existing work order
+      parameters:
+        - name: id
+          in: path
+          description: Work order UUID
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+        - name: x-org-id
+          in: header
+          description: Organization UUID
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 00000000-0000-4000-8000-000000000001
+        - name: idempotency-key
+          in: header
+          description: Idempotency key for safe retries
+          required: false
+          schema:
+            type: string
+            format: uuid
+            example: 550e8400-e29b-41d4-a716-446655440000
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 255
+                description:
+                  type: string
+                  maxLength: 2000
+                priority:
+                  type: string
+                  enum: [low, medium, high, urgent]
+                status:
+                  type: string
+                  enum: [open, in_progress, completed, cancelled]
+      responses:
+        '200':
+          description: Work order updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  workOrder:
+                    $ref: '#/components/schemas/WorkOrder'
+                  meta:
+                    type: object
+                    properties:
+                      organizationId:
+                        type: string
+                        format: uuid
+                        example: 00000000-0000-4000-8000-000000000001
+                required:
+                  - success
+                  - workOrder
+                  - meta
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+  /v1/work-orders/{id}/transition:
+    post:
+      tags:
+        - Work Orders
+      summary: Transition work order status
+      description: Changes work order status with validation and audit trail
+      parameters:
+        - name: id
+          in: path
+          description: Work order UUID
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+        - name: x-org-id
+          in: header
+          description: Organization UUID
+          required: true
+          schema:
+            type: string
+            format: uuid
+            example: 00000000-0000-4000-8000-000000000001
+        - name: idempotency-key
+          in: header
+          description: Idempotency key for safe retries
+          required: false
+          schema:
+            type: string
+            format: uuid
+            example: 550e8400-e29b-41d4-a716-446655440000
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                newStatus:
+                  type: string
+                  enum: [open, in_progress, completed, cancelled]
+                  example: in_progress
+                reason:
+                  type: string
+                  example: "Starting work on faucet repair"
+                  maxLength: 500
+              required:
+                - newStatus
+      responses:
+        '200':
+          description: Work order status transitioned successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  workOrder:
+                    $ref: '#/components/schemas/WorkOrder'
+                  transition:
+                    type: object
+                    properties:
+                      from:
+                        type: string
+                        example: open
+                      to:
+                        type: string
+                        example: in_progress
+                      reason:
+                        type: string
+                        example: "Starting work on faucet repair"
+                        nullable: true
+                    required:
+                      - from
+                      - to
+                  meta:
+                    type: object
+                    properties:
+                      organizationId:
+                        type: string
+                        format: uuid
+                        example: 00000000-0000-4000-8000-000000000001
+                required:
+                  - success
+                  - workOrder
+                  - transition
+                  - meta
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+components:
+  securitySchemes:
+    organizationAuth:
+      type: apiKey
+      in: header
+      name: x-org-id
+      description: Organization UUID for multi-tenant access control
+    idempotencyKey:
+      type: apiKey
+      in: header
+      name: idempotency-key
+      description: UUID for idempotent request handling
+  schemas:
+    WorkOrder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+        title:
+          type: string
+          example: "Fix leaky faucet in unit 2A"
+        description:
+          type: string
+          example: "Tenant reported dripping faucet in kitchen sink"
+          nullable: true
+        status:
+          type: string
+          enum: [open, in_progress, completed, cancelled]
+          example: open
+        priority:
+          type: string
+          enum: [low, medium, high, urgent]
+          example: medium
+        property_id:
+          type: string
+          format: uuid
+          example: 11111111-2222-3333-4444-555555555555
+          nullable: true
+        organization_id:
+          type: string
+          format: uuid
+          example: 00000000-0000-4000-8000-000000000001
+        created_at:
+          type: string
+          format: date-time
+          example: '2025-01-20T10:30:00.000Z'
+        updated_at:
+          type: string
+          format: date-time
+          example: '2025-01-20T11:15:00.000Z'
+      required:
+        - id
+        - title
+        - status
+        - priority
+        - organization_id
+        - created_at
+        - updated_at
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        code:
+          type: string
+          example: AUTH-ORG-INVALID
+        message:
+          type: string
+          example: "Invalid organization ID format"
+        details:
+          type: object
+          nullable: true
+        meta:
+          type: object
+          properties:
+            requestId:
+              type: string
+              format: uuid
+              example: 12345678-1234-5678-9abc-def012345678
+            timestamp:
+              type: string
+              format: date-time
+              example: '2025-01-20T10:30:00.000Z'
+          required:
+            - requestId
+            - timestamp
+      required:
+        - success
+        - code
+        - message
+        - meta
+  responses:
+    BadRequestError:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            InvalidOrgId:
+              summary: Invalid organization ID
+              value:
+                success: false
+                code: AUTH-ORG-INVALID
+                message: "Invalid organization ID format"
+                meta:
+                  requestId: "12345678-1234-5678-9abc-def012345678"
+                  timestamp: "2025-01-20T10:30:00.000Z"
+            MissingIdempotencyKey:
+              summary: Invalid idempotency key
+              value:
+                success: false
+                code: IDEMPOTENCY-KEY-INVALID
+                message: "Idempotency-Key must be a valid UUID format"
+                meta:
+                  requestId: "12345678-1234-5678-9abc-def012345678"
+                  timestamp: "2025-01-20T10:30:00.000Z"
+    NotFoundError:
+      description: Resource not found or access denied
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            WorkOrderNotFound:
+              summary: Work order not found
+              value:
+                success: false
+                code: RESOURCE-NOT-FOUND
+                message: "Work order not found or access denied"
+                meta:
+                  requestId: "12345678-1234-5678-9abc-def012345678"
+                  timestamp: "2025-01-20T10:30:00.000Z"

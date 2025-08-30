@@ -1,0 +1,203 @@
+name: 🔒 Dependency Security Check
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - '**/package.json'
+      - '**/package-lock.json'
+      - '**/yarn.lock'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - '**/package.json'
+      - '**/package-lock.json'
+      - '**/yarn.lock'
+  schedule:
+    # Run weekly on Mondays at 6 AM UTC
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+  pull-requests: write
+
+jobs:
+  audit:
+    name: 🔍 Audit Dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          
+      - name: 🔒 Run npm audit
+        id: audit
+        run: |
+          echo "## 🔍 NPM Audit Results" >> audit_results.md
+          echo "" >> audit_results.md
+          
+          # Run audit and capture output
+          if npm audit --audit-level=moderate --json > audit.json 2>/dev/null; then
+            echo "✅ No vulnerabilities found" >> audit_results.md
+            echo "status=clean" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Vulnerabilities detected" >> audit_results.md
+            echo "" >> audit_results.md
+            
+            # Parse and format results
+            cat audit.json | jq -r '
+              if .vulnerabilities then
+                .vulnerabilities | to_entries[] | 
+                "- **" + .key + "** (" + .value.severity + "): " + .value.via[0].title
+              else
+                "No detailed vulnerability information available"
+              end
+            ' >> audit_results.md
+            
+            echo "status=vulnerable" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: 🔒 Check for high/critical vulnerabilities
+        if: steps.audit.outputs.status == 'vulnerable'
+        run: |
+          # Fail the job if high or critical vulnerabilities are found
+          if npm audit --audit-level=high --json > /dev/null 2>&1; then
+            echo "❌ High or critical vulnerabilities found!"
+            npm audit --audit-level=high
+            exit 1
+          else
+            echo "⚠️  Moderate vulnerabilities found but no high/critical ones"
+          fi
+          
+      - name: 📊 Comment audit results on PR
+        if: github.event_name == 'pull_request' && steps.audit.outputs.status == 'vulnerable'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const auditResults = fs.readFileSync('audit_results.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: auditResults
+            });
+
+  license-check:
+    name: 📋 License Compliance Check  
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          
+      - name: 📋 Install license checker
+        run: npm install -g license-checker
+        
+      - name: 🔍 Check licenses
+        run: |
+          echo "## 📋 License Compliance Check" > license_report.md
+          echo "" >> license_report.md
+          
+          # Define allowed licenses
+          allowed_licenses="MIT;ISC;BSD-2-Clause;BSD-3-Clause;Apache-2.0;CC0-1.0;Unlicense"
+          
+          # Check licenses
+          if license-checker --onlyAllow "$allowed_licenses" --excludePrivatePackages --summary; then
+            echo "✅ All licenses are compliant" >> license_report.md
+          else
+            echo "❌ License compliance issues found" >> license_report.md
+            echo "" >> license_report.md
+            echo "### Non-compliant packages:" >> license_report.md
+            license-checker --excludePrivatePackages --csv | grep -v -E "($allowed_licenses)" >> license_report.md || true
+          fi
+          
+      - name: 🚨 Fail on license violations
+        run: |
+          allowed_licenses="MIT;ISC;BSD-2-Clause;BSD-3-Clause;Apache-2.0;CC0-1.0;Unlicense"
+          if ! license-checker --onlyAllow "$allowed_licenses" --excludePrivatePackages; then
+            echo "❌ License compliance check failed!"
+            echo "Please review and resolve license issues before merging."
+            exit 1
+          fi
+
+  outdated-check:
+    name: 📅 Outdated Dependencies Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+          
+      - name: 📅 Check for outdated packages
+        run: |
+          echo "## 📅 Outdated Dependencies Report" > outdated_report.md
+          echo "" >> outdated_report.md
+          
+          if npm outdated --json > outdated.json 2>/dev/null; then
+            echo "✅ All dependencies are up to date" >> outdated_report.md
+          else
+            echo "📦 Outdated packages found:" >> outdated_report.md
+            echo "" >> outdated_report.md
+            echo "| Package | Current | Wanted | Latest |" >> outdated_report.md  
+            echo "|---------|---------|---------|---------|" >> outdated_report.md
+            
+            cat outdated.json | jq -r '
+              to_entries[] | 
+              "| " + .key + " | " + .value.current + " | " + .value.wanted + " | " + .value.latest + " |"
+            ' >> outdated_report.md
+          fi
+          
+      - name: 📊 Create outdated dependencies issue
+        if: github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            if (fs.existsSync('outdated_report.md')) {
+              const outdatedReport = fs.readFileSync('outdated_report.md', 'utf8');
+              
+              // Check if there's already an open issue for outdated dependencies
+              const existingIssues = await github.rest.issues.listForRepo({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                state: 'open',
+                labels: 'dependencies,outdated'
+              });
+              
+              if (existingIssues.data.length === 0) {
+                // Create new issue if none exists
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: '📅 Weekly Outdated Dependencies Report',
+                  body: outdatedReport,
+                  labels: ['dependencies', 'outdated', 'maintenance']
+                });
+              }
+            }

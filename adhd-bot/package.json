@@ -1,0 +1,30 @@
+{
+  "name": "adhd-accountability-bot",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ADHD Accountability Telegram Bot - Daily task tracking with streak management",
+  "scripts": {
+    "dev": "node --watch ./src/bot.js",
+    "start": "node ./src/bot.js",
+    "migrate": "node ./tools/migrate.js",
+    "seed": "node ./tools/seed.js",
+    "db:reset": "npm run migrate && npm run seed",
+    "test": "node --test tests/*.test.js",
+    "backup": "node ./tools/backup.js"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.6",
+    "dayjs": "^1.11.13",
+    "dotenv": "^16.4.5",
+    "telegraf": "^4.16.3",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.9",
+    "@types/node": "^20.12.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,57 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Validate commit message format
+commit_msg_file=$1
+commit_msg=$(cat $commit_msg_file)
+
+echo "🔍 Validating commit message format..."
+
+# Check if commit message follows conventional commits format
+if ! echo "$commit_msg" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci|build)(\(.+\))?: .{1,72}'; then
+  echo "❌ Invalid commit message format!"
+  echo ""
+  echo "Commit message must follow conventional commits format:"
+  echo "  type(scope): description"
+  echo ""
+  echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build"
+  echo "Examples:"
+  echo "  feat(auth): add Firebase authentication"
+  echo "  fix(api): resolve database connection timeout"
+  echo "  docs(readme): update installation instructions"
+  echo "  chore(deps): update dependencies"
+  echo ""
+  echo "Your commit message:"
+  echo "  $commit_msg"
+  echo ""
+  exit 1
+fi
+
+# Check for security-related commits
+if echo "$commit_msg" | grep -iqE '(security|vulnerability|cve|exploit|patch)'; then
+  echo "🔒 Security-related commit detected"
+  echo "Commit message: $commit_msg"
+  
+  # Ensure security commits are properly labeled
+  if ! echo "$commit_msg" | grep -qE '^(fix|feat|chore)\(security\)'; then
+    echo "⚠️  Security commits should use (security) scope"
+    echo "Example: fix(security): patch XSS vulnerability in user input"
+  fi
+fi
+
+# Check for breaking changes
+if echo "$commit_msg" | grep -q "BREAKING CHANGE"; then
+  echo "💥 Breaking change detected!"
+  echo "Ensure:"
+  echo "  1. Version bump is planned (major version)"
+  echo "  2. Migration guide is prepared" 
+  echo "  3. Stakeholders are notified"
+fi
+
+# Prevent commits with TODO or FIXME in message (usually indicates incomplete work)
+if echo "$commit_msg" | grep -iqE '(todo|fixme|hack|temporary)'; then
+  echo "⚠️  Warning: Commit message contains TODO/FIXME/HACK"
+  echo "Consider completing the work or creating a proper issue before committing"
+fi
+
+echo "✅ Commit message format is valid!"

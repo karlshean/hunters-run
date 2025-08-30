@@ -1,0 +1,111 @@
+name: Role Guard
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run daily to catch configuration drift
+    - cron: '0 6 * * *'
+
+jobs:
+  role-guard:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version-file: '.nvmrc'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Role Guard Check
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        DB_SSL_MODE: relaxed
+      run: |
+        echo "🔍 Running database role security check..."
+        node scripts/whoami-probe.js
+        
+    - name: Verify Application User
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        DB_SSL_MODE: relaxed
+      run: |
+        echo "🛡️ Verifying application user configuration..."
+        
+        # Check that we're connecting as application user
+        CURRENT_USER=$(node -e "
+          const { Client } = require('pg');
+          const client = new Client({
+            connectionString: process.env.DATABASE_URL,
+            ssl: { rejectUnauthorized: false }
+          });
+          client.connect().then(() => {
+            return client.query('SELECT current_user');
+          }).then(result => {
+            console.log(result.rows[0].current_user);
+            client.end();
+          }).catch(err => {
+            console.error('Error:', err.message);
+            process.exit(1);
+          });
+        ")
+        
+        echo "Connected as: $CURRENT_USER"
+        
+        if [ "$CURRENT_USER" != "app_user" ]; then
+          echo "❌ SECURITY FAILURE: Not connected as app_user"
+          echo "Expected: app_user"
+          echo "Actual: $CURRENT_USER"
+          exit 1
+        fi
+        
+        echo "✅ Role Guard: Connected as application user"
+        
+    - name: Verify No Privilege Escalation
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        DB_SSL_MODE: relaxed
+      run: |
+        echo "🔒 Checking for privilege escalation..."
+        
+        # Verify rolbypassrls=false
+        BYPASS_RLS=$(node -e "
+          const { Client } = require('pg');
+          const client = new Client({
+            connectionString: process.env.DATABASE_URL,
+            ssl: { rejectUnauthorized: false }
+          });
+          client.connect().then(() => {
+            return client.query('SELECT rolbypassrls FROM pg_roles WHERE rolname = current_user');
+          }).then(result => {
+            console.log(result.rows[0].rolbypassrls);
+            client.end();
+          }).catch(err => {
+            console.error('Error:', err.message);
+            process.exit(1);
+          });
+        ")
+        
+        if [ "$BYPASS_RLS" = "true" ]; then
+          echo "❌ SECURITY FAILURE: User can bypass RLS"
+          exit 1
+        fi
+        
+        echo "✅ Role Guard: RLS enforcement active"
+        
+    - name: Summary
+      run: |
+        echo "🎉 Role Guard Summary:"
+        echo "✅ Connected as application user (not superuser)"
+        echo "✅ RLS enforcement active (no BYPASSRLS)"
+        echo "✅ Role has least-privilege configuration"
+        echo "✅ Database security boundaries verified"

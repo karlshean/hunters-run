@@ -1,0 +1,64 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Echo commit info for debugging
+echo "🚀 Running pre-commit hooks..."
+
+# Run lint-staged to check only staged files
+npm run precommit
+
+# Security check: Ensure no secrets are committed
+echo "🔒 Checking for potential secrets..."
+if git diff --cached --name-only | grep -E '\.(env|key|pem|p12|pfx)$' | grep -v '\.env\.example$'; then
+  echo "❌ Error: Potential secret files detected in commit"
+  echo "Files with sensitive extensions found:"
+  git diff --cached --name-only | grep -E '\.(env|key|pem|p12|pfx)$' | grep -v '\.env\.example$'
+  echo "Please review and remove sensitive files before committing."
+  exit 1
+fi
+
+# Check for common secret patterns in staged changes
+if git diff --cached | grep -iE '(password|secret|api_key|private_key|token).*=.*[a-zA-Z0-9]{8,}'; then
+  echo "❌ Warning: Potential secrets detected in code changes"
+  echo "Please review the following potential secrets:"
+  git diff --cached | grep -iE '(password|secret|api_key|private_key|token).*=.*[a-zA-Z0-9]{8,}' | head -5
+  echo "If these are not actual secrets, consider using more generic names or adding to .gitignore"
+  read -p "Continue anyway? (y/N): " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    exit 1
+  fi
+fi
+
+# Database migration safety check
+if git diff --cached --name-only | grep -q 'migrations/.*\.sql$'; then
+  echo "⚠️  Database migration detected!"
+  echo "Files:"
+  git diff --cached --name-only | grep 'migrations/.*\.sql$'
+  echo "Please ensure:"
+  echo "  1. Migration is backwards compatible"
+  echo "  2. Large tables have been considered for performance"
+  echo "  3. RLS policies are updated if needed"
+  echo "  4. Migration has been tested on staging data"
+  read -p "Migration review complete? (y/N): " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "❌ Migration review required before commit"
+    exit 1
+  fi
+fi
+
+# Configuration file safety check  
+if git diff --cached --name-only | grep -qE '(package\.json|tsconfig\.json|\.env\.example)$'; then
+  echo "⚙️  Configuration files changed - ensuring consistency..."
+  
+  # Check if package.json engines are still pinned
+  if git diff --cached --name-only | grep -q 'package\.json$'; then
+    if ! grep -q '"node": "22\.18\.0"' package.json; then
+      echo "❌ Error: Node.js version must remain pinned to 22.18.0"
+      exit 1
+    fi
+  fi
+fi
+
+echo "✅ Pre-commit checks passed!"

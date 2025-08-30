@@ -1,0 +1,121 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":maintainLockFilesWeekly",
+    ":separateMajorReleases",
+    ":semanticCommits"
+  ],
+  "schedule": ["before 6am on Monday"],
+  "timezone": "America/New_York",
+  "labels": ["dependencies"],
+  "assignees": ["@platform-team"],
+  "reviewers": ["@platform-team"],
+  "prHourlyLimit": 2,
+  "prConcurrentLimit": 5,
+  "packageRules": [
+    {
+      "groupName": "NestJS packages",
+      "matchPackagePatterns": ["^@nestjs/"],
+      "schedule": ["before 6am on Monday"],
+      "automerge": false,
+      "reviewersFromCodeOwners": true
+    },
+    {
+      "groupName": "TypeORM packages", 
+      "matchPackagePatterns": ["typeorm"],
+      "schedule": ["before 6am on Monday"],
+      "automerge": false,
+      "reviewersFromCodeOwners": true
+    },
+    {
+      "groupName": "Security packages",
+      "matchPackagePatterns": [
+        "helmet",
+        "express-rate-limit",
+        "dotenv-safe",
+        "class-validator",
+        "class-transformer"
+      ],
+      "schedule": ["before 6am on Monday"],
+      "automerge": false,
+      "labels": ["security", "dependencies"],
+      "reviewersFromCodeOwners": true,
+      "prPriority": 10
+    },
+    {
+      "groupName": "Firebase packages",
+      "matchPackagePatterns": ["firebase"],
+      "schedule": ["before 6am on Monday"],
+      "automerge": false,
+      "reviewersFromCodeOwners": true
+    },
+    {
+      "groupName": "PostgreSQL packages",
+      "matchPackagePatterns": ["^pg"],
+      "schedule": ["before 6am on Monday"], 
+      "automerge": false,
+      "reviewersFromCodeOwners": true
+    },
+    {
+      "groupName": "Development dependencies",
+      "matchDepTypes": ["devDependencies"],
+      "schedule": ["before 6am on Monday"],
+      "automerge": true,
+      "minimumReleaseAge": "3 days",
+      "labels": ["dependencies", "dev"]
+    },
+    {
+      "groupName": "Patch updates",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "minimumReleaseAge": "1 day",
+      "schedule": ["before 6am on Monday"]
+    },
+    {
+      "groupName": "Pin dependencies",
+      "matchUpdateTypes": ["pin"],
+      "automerge": true,
+      "schedule": ["before 6am on Monday"]
+    },
+    {
+      "groupName": "Major updates",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "schedule": ["before 6am on first day of month"],
+      "labels": ["dependencies", "major-update"],
+      "reviewersFromCodeOwners": true,
+      "prPriority": 20
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "schedule": ["at any time"],
+    "labels": ["security", "vulnerability"],
+    "assignees": ["@platform-team"],
+    "reviewers": ["@platform-team"],
+    "prPriority": 100
+  },
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 6am on Monday"],
+    "commitMessageAction": "Lock file maintenance"
+  },
+  "ignorePaths": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/.next/**"
+  ],
+  "commitMessagePrefix": "chore(deps):",
+  "commitMessageAction": "Update",
+  "commitMessageTopic": "{{depName}}",
+  "semanticCommits": "enabled",
+  "platformAutomerge": false,
+  "rebaseWhen": "behind-base-branch",
+  "updateNotScheduled": false,
+  "dependencyDashboard": true,
+  "dependencyDashboardTitle": "📦 Dependency Updates Dashboard",
+  "dependencyDashboardHeader": "This is the dependency dashboard for Hunters Run Platform. All dependency update PRs will be listed here.",
+  "dependencyDashboardLabels": ["dependencies", "dashboard"]
+}
