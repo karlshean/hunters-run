@@ -1,4 +1,5 @@
-import 'dotenv/config';
+﻿
+const { registerHandlers } = require('./handlers');import 'dotenv/config';
 import { Telegraf } from 'telegraf';
 import { openDb, closeDb } from './db/sqlite.js';
 import { info, error, success } from './logger.js';
@@ -45,7 +46,7 @@ bot.use(async (ctx, next) => {
 // Error handling middleware
 bot.catch((err, ctx) => {
   error(`Bot error for ${ctx.from?.id}:`, err);
-  ctx.reply('❌ Something went wrong. Please try again later.');
+  ctx.reply('âŒ Something went wrong. Please try again later.');
 });
 
 // Setup all command handlers
@@ -60,7 +61,7 @@ if (process.env.ENABLE_REMINDERS === 'true') {
 // Launch bot
 bot.launch()
   .then(() => {
-    success(`🤖 ${process.env.BOT_NAME || 'ADHD Bot'} started successfully!`);
+    success(`ðŸ¤– ${process.env.BOT_NAME || 'ADHD Bot'} started successfully!`);
     success(`Bot username: @${bot.botInfo?.username}`);
   })
   .catch(err => {
@@ -78,3 +79,4 @@ const shutdown = (signal) => {
 
 process.once('SIGINT', () => shutdown('SIGINT'));
 process.once('SIGTERM', () => shutdown('SIGTERM'));
+

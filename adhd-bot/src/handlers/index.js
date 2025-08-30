@@ -1,28 +1,31 @@
-import { setupTaskHandlers } from './tasks.js';
-import { setupCheckinHandlers } from './checkins.js';
-import { setupAnalyticsHandlers } from './analytics.js';
-import { setupUserHandlers } from './users.js';
-import { setupHelpHandlers } from './help.js';
-
+﻿'use strict';
+const fs = require('fs');
+const path = require('path');
 /**
- * Setup all bot command handlers
+ * Dynamically loads every handler in this folder (except index.js) and calls one of:
+ * - exported function itself
+ * - exported.setupUserHandlers / setupHandlers / registerHandlers / register / run
+ * so that command registration (/start, /add, /list, etc.) is guaranteed.
  */
-export function setupHandlers(bot) {
-  // Core handlers
-  setupUserHandlers(bot);
-  setupTaskHandlers(bot);
-  setupCheckinHandlers(bot);
-  
-  // Analytics and reporting
-  setupAnalyticsHandlers(bot);
-  
-  // Help and info
-  setupHelpHandlers(bot);
-  
-  // Fallback for unknown commands
-  bot.on('text', (ctx) => {
-    if (ctx.message.text.startsWith('/')) {
-      ctx.reply("❓ Unknown command. Use /help to see available commands.");
+function registerHandlers(bot) {
+  const files = fs.readdirSync(__dirname).filter(f => f.endsWith('.js') && f !== 'index.js');
+  for (const file of files) {
+    const mod = require(path.join(__dirname, file));
+    try {
+      if (typeof mod === 'function') { mod(bot); continue; }
+      const candidates = ['setupUserHandlers','setupHandlers','registerHandlers','register','run'];
+      let called = false;
+      for (const k of candidates) {
+        if (mod && typeof mod[k] === 'function') { mod[k](bot); called = true; break; }
+      }
+      if (!called) {
+        // Last resort: if module has only one function export, invoke it
+        const onlyFn = Object.entries(mod||{}).find(([k,v]) => typeof v === 'function');
+        if (onlyFn) onlyFn[1](bot);
+      }
+    } catch (e) {
+      console.error('Handler load error for', file, e.message);
     }
-  });
+  }
 }
+module.exports = { registerHandlers };
