@@ -1,3 +1,5 @@
+This iiis a test for chatptg
+
 import { prepare } from '../db/sqlite.js';
 import { isValidTimezone } from '../lib/time.js';
 import { getOrCreateStreak } from '../lib/streaks.js';
