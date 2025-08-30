@@ -40,7 +40,7 @@ export function setupHelpHandlers(bot) {
 2. Complete it: \`/done\`
 3. Check progress: \`/status\``;
     
-    return ctx.reply(helpText, { parse_mode: 'Markdown' });
+    return ctx.reply(helpText);
   });
   
   // Tips command
@@ -85,7 +85,7 @@ export function setupHelpHandlers(bot) {
 
 Remember: **Consistency > Perfection** 💪`;
     
-    return ctx.reply(tips, { parse_mode: 'Markdown' });
+    return ctx.reply(tips);
   });
   
   // About command
@@ -120,7 +120,7 @@ This bot is designed to help people with ADHD build consistent habits through:
 
 Version: 1.0.0`;
     
-    return ctx.reply(about, { parse_mode: 'Markdown' });
+    return ctx.reply(about);
   });
   
   // Quick command reference
@@ -144,6 +144,6 @@ Version: 1.0.0`;
 
 Type any command without parameters to see usage help!`;
     
-    return ctx.reply(commands, { parse_mode: 'Markdown' });
+    return ctx.reply(commands);
   });
 }

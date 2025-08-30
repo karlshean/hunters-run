@@ -4,7 +4,9 @@
       "Bash(powershell:*)",
       "Bash(node:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(git --no-pager diff --staged)",
+      "Bash(git checkout:*)"
     ],
     "deny": [],
     "ask": []

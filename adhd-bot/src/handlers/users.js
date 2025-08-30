@@ -53,7 +53,7 @@ This bot helps you stay accountable with daily tasks and build consistency.
 
 Let's build better habits together! 💪`;
     
-    await ctx.reply(welcomeMessage, { parse_mode: 'Markdown' });
+    await ctx.reply(welcomeMessage);
   });
   
   // Timezone command
@@ -63,11 +63,11 @@ Let's build better habits together! 💪`;
     
     if (!timezone) {
       return ctx.reply(`
-🕐 **Timezone Configuration**
+🕐 Timezone Configuration
 
 Current: ${getUser.get(ctx.from.id)?.tz || 'Not set'}
 
-Usage: \`/tz America/New_York\`
+Usage: /tz America/New_York
 
 Common timezones:
 • America/New_York (EST/EDT)
@@ -77,9 +77,7 @@ Common timezones:
 • Europe/London (GMT/BST)
 • Europe/Paris (CET/CEST)
 • Asia/Tokyo (JST)
-• Australia/Sydney (AEDT/AEST)`, 
-        { parse_mode: 'Markdown' }
-      );
+• Australia/Sydney (AEDT/AEST)`);
     }
     
     if (!isValidTimezone(timezone)) {
@@ -101,17 +99,15 @@ Common timezones:
       const user = getUser.get(ctx.from.id);
       const status = user?.reminder_enabled ? 'ON 🔔' : 'OFF 🔕';
       return ctx.reply(`
-🔔 **Daily Reminders**
+🔔 Daily Reminders
 
 Status: ${status}
 
 Usage:
-• \`/reminder on\` - Enable reminders
-• \`/reminder off\` - Disable reminders
+• /reminder on - Enable reminders
+• /reminder off - Disable reminders
 
-Reminders help you stay consistent!`, 
-        { parse_mode: 'Markdown' }
-      );
+Reminders help you stay consistent!`);
     }
     
     const enabled = action === 'on';
@@ -135,16 +131,16 @@ Reminders help you stay consistent!`,
     const reminderStatus = user.reminder_enabled ? 'Enabled 🔔' : 'Disabled 🔕';
     
     const profile = `
-👤 **Your Profile**
+👤 Your Profile
 
-**Username:** ${user.username || 'Not set'}
-**Name:** ${user.first_name || 'Not set'}
-**Timezone:** ${user.tz}
-**Reminders:** ${reminderStatus}
-**Member Since:** ${new Date(user.created_at).toLocaleDateString()}
+Username: ${user.username || 'Not set'}
+Name: ${user.first_name || 'Not set'}
+Timezone: ${user.tz}
+Reminders: ${reminderStatus}
+Member Since: ${new Date(user.created_at).toLocaleDateString()}
 
 📝 Use /help to see all commands`;
     
-    return ctx.reply(profile, { parse_mode: 'Markdown' });
+    return ctx.reply(profile);
   });
 }
