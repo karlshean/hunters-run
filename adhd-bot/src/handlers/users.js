@@ -32,7 +32,7 @@ export function setupUserHandlers(bot) {
       tz: process.env.TZ_DEFAULT || 'America/New_York'
     };
     
-    upsertUser.run(user);
+    upsertUser(user);
     getOrCreateStreak(user.telegram_id);
     
     info(`New user registered: ${user.telegram_id} (${user.username})`);
