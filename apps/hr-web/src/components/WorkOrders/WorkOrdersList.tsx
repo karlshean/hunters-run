@@ -97,35 +97,74 @@ const WorkOrdersList: React.FC = () => {
       {/* Demo Navigation - Feature Flagged */}
       {process.env.FEATURE_DEMO_PHOTOS_UI === 'true' && (
         <div style={{
-          background: '#f0f9ff',
-          border: '1px solid #0ea5e9',
-          borderRadius: '8px',
-          padding: '12px 16px',
-          marginBottom: '16px',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
+          gap: '12px',
+          marginBottom: '16px'
         }}>
-          <div>
-            <strong>📸 Photo Demo Available!</strong> 
-            <span style={{ marginLeft: '8px', color: '#6b7280' }}>
-              See the complete photo-first workflow
-            </span>
+          <div style={{
+            background: '#f0f9ff',
+            border: '1px solid #0ea5e9',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flex: 1
+          }}>
+            <div>
+              <strong>📸 Photo Demo Available!</strong> 
+              <span style={{ marginLeft: '8px', color: '#6b7280' }}>
+                Professional photo workflow
+              </span>
+            </div>
+            <button
+              onClick={() => window.location.href = '/demo/photos'}
+              style={{
+                background: '#0ea5e9',
+                color: 'white',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              View Demo
+            </button>
           </div>
-          <button
-            onClick={() => window.location.href = '/demo/photos'}
-            style={{
-              background: '#0ea5e9',
-              color: 'white',
-              border: 'none',
-              padding: '6px 12px',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            View Demo
-          </button>
+          
+          <div style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: '1px solid #667eea',
+            borderRadius: '8px',
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flex: 1
+          }}>
+            <div>
+              <strong style={{ color: 'white' }}>✨ Social Experience!</strong> 
+              <span style={{ marginLeft: '8px', color: 'rgba(255,255,255,0.8)' }}>
+                Instagram/Snapchat style
+              </span>
+            </div>
+            <button
+              onClick={() => window.location.href = '/demo/social'}
+              style={{
+                background: 'white',
+                color: '#667eea',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600'
+              }}
+            >
+              Try Social
+            </button>
+          </div>
         </div>
       )}
       
