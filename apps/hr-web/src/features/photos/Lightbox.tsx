@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback } from 'react';
 import { Photo } from './mockPhotoService';
 import './photos.css';
+import './photos-premium.css';
 
 interface LightboxProps {
   photos: Photo[];

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { mockPhotoService, Photo } from './mockPhotoService';
 import { PhotoUploader } from './PhotoUploader';
 import './photos.css';
+import './photos-premium.css';
 
 interface RolePhotoPanelProps {
   workOrderId: string;

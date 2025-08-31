@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { mockPhotoService, Photo } from './mockPhotoService';
 import './photos.css';
+import './photos-premium.css';
 
 interface PhotoUploaderProps {
   workOrderId: string;
@@ -23,10 +24,26 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
 }) => {
   const [uploading, setUploading] = useState<{[key: string]: number}>({});
   const [previews, setPreviews] = useState<{file: File; url: string; id: string}[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uploadAreaRef = useRef<HTMLDivElement>(null);
+
+  // Add smooth drag state
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.currentTarget === e.target) {
+      setIsDragging(false);
+    }
+  };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    setIsDragging(false);
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
     handleFiles(files);
   };
@@ -119,8 +136,11 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       )}
 
       <div 
-        className={`upload-area ${disabled ? 'disabled' : ''}`}
+        ref={uploadAreaRef}
+        className={`upload-area ${disabled ? 'disabled' : ''} ${isDragging ? 'dragging' : ''}`}
         onDrop={handleDrop}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
         onDragOver={(e) => e.preventDefault()}
         onClick={openFileDialog}
       >
@@ -146,8 +166,12 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
 
       {previews.length > 0 && (
         <div className="preview-grid">
-          {previews.map(preview => (
-            <div key={preview.id} className="preview-item">
+          {previews.map((preview, index) => (
+            <div 
+              key={preview.id} 
+              className="preview-item"
+              style={{ '--item-index': index } as React.CSSProperties}
+            >
               <img src={preview.url} alt="Preview" className="preview-image" />
               
               {uploading[preview.id] !== undefined ? (

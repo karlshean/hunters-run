@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { mockPhotoService, PhotoGroups, Photo } from './mockPhotoService';
 import { Lightbox } from './Lightbox';
 import './photos.css';
+import './photos-premium.css';
 
 interface PhotoGalleryProps {
   workOrderId: string;
@@ -42,13 +43,25 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ workOrderId }) => {
     setLightboxPhoto(photo);
   };
 
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    e.currentTarget.style.setProperty('--mouse-x', `${x}%`);
+    e.currentTarget.style.setProperty('--mouse-y', `${y}%`);
+  };
+
   const PhotoSection: React.FC<{
     title: string;
     photos: Photo[];
     emptyText: string;
     badge?: string;
-  }> = ({ title, photos, emptyText, badge }) => (
-    <div className="photo-section">
+    sectionIndex: number;
+  }> = ({ title, photos, emptyText, badge, sectionIndex }) => (
+    <div 
+      className="photo-section"
+      style={{ '--animation-order': sectionIndex } as React.CSSProperties}
+    >
       <div className="section-header">
         <h3>{title}</h3>
         {badge && <span className="photo-count-badge">{badge}</span>}
@@ -61,15 +74,17 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ workOrderId }) => {
         </div>
       ) : (
         <div className="photo-grid">
-          {photos.map(photo => (
+          {photos.map((photo, index) => (
             <div 
               key={photo.id}
               className="photo-thumb"
               onClick={() => openLightbox(photo)}
               onKeyDown={(e) => e.key === 'Enter' && openLightbox(photo)}
+              onMouseMove={handleMouseMove}
               tabIndex={0}
               role="button"
               aria-label={`View ${photo.kind} photo`}
+              style={{ '--item-index': index } as React.CSSProperties}
             >
               <img src={photo.url} alt={photo.kind} />
               <div className="photo-overlay">
@@ -105,6 +120,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ workOrderId }) => {
         photos={photoGroups.before}
         emptyText="No before photos yet"
         badge={photoGroups.before.length > 0 ? photoGroups.before.length.toString() : undefined}
+        sectionIndex={0}
       />
 
       <PhotoSection
@@ -112,6 +128,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ workOrderId }) => {
         photos={photoGroups.during}
         emptyText="No progress photos yet"
         badge={photoGroups.during.length > 0 ? photoGroups.during.length.toString() : undefined}
+        sectionIndex={1}
       />
       
       <PhotoSection
@@ -119,6 +136,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ workOrderId }) => {
         photos={photoGroups.after}
         emptyText="No completion photos yet"
         badge={photoGroups.after.length > 0 ? photoGroups.after.length.toString() : undefined}
+        sectionIndex={2}
       />
       
       <PhotoSection
@@ -126,6 +144,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ workOrderId }) => {
         photos={photoGroups.tenant}
         emptyText="No tenant photos"
         badge={photoGroups.tenant.length > 0 ? photoGroups.tenant.length.toString() : undefined}
+        sectionIndex={3}
       />
       
       <PhotoSection
@@ -133,6 +152,7 @@ export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ workOrderId }) => {
         photos={photoGroups.manager}
         emptyText="No manager photos"
         badge={photoGroups.manager.length > 0 ? photoGroups.manager.length.toString() : undefined}
+        sectionIndex={4}
       />
 
       {lightboxPhoto && (
