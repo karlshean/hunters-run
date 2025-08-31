@@ -50,20 +50,27 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
     try {
       setUploading(prev => ({ ...prev, [previewId]: 0 }));
 
-      // Simulate progress
-      for (let i = 0; i <= 100; i += 20) {
-        setUploading(prev => ({ ...prev, [previewId]: i }));
-        await new Promise(resolve => setTimeout(resolve, 100));
+      // Simulate smooth progress with variable speed
+      const progressSteps = [0, 15, 30, 50, 70, 85, 95, 100];
+      const delays = [200, 300, 400, 300, 200, 150, 100, 200];
+      
+      for (let i = 0; i < progressSteps.length; i++) {
+        setUploading(prev => ({ ...prev, [previewId]: progressSteps[i] }));
+        await new Promise(resolve => setTimeout(resolve, delays[i]));
       }
 
-      // Get upload URL
+      // Get upload URL with realistic delay
       const { uploadUrl, storageKey } = await mockPhotoService.requestUpload(kind);
       
-      // Upload file
+      // Upload file with realistic processing time
       const photoUrl = await mockPhotoService.upload(uploadUrl, file);
       
       // Save metadata
       const photo = await mockPhotoService.saveMeta(workOrderId, kind, storageKey, role, photoUrl);
+      
+      // Show success state briefly
+      setUploading(prev => ({ ...prev, [previewId]: 100 }));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       // Complete upload
       setUploading(prev => {
@@ -76,11 +83,15 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
       
     } catch (error) {
       console.error('Upload failed:', error);
-      setUploading(prev => {
-        const updated = { ...prev };
-        delete updated[previewId];
-        return updated;
-      });
+      // Show error state
+      setUploading(prev => ({ ...prev, [previewId]: -1 }));
+      setTimeout(() => {
+        setUploading(prev => {
+          const updated = { ...prev };
+          delete updated[previewId];
+          return updated;
+        });
+      }, 2000);
     }
   };
 
@@ -141,11 +152,25 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
               
               {uploading[preview.id] !== undefined ? (
                 <div className="preview-progress">
-                  <div 
-                    className="progress-bar"
-                    style={{ width: `${uploading[preview.id]}%` }}
-                  />
-                  <span className="progress-text">{uploading[preview.id]}%</span>
+                  {uploading[preview.id] === -1 ? (
+                    <>
+                      <div className="progress-error">Upload failed</div>
+                      <span className="progress-text error">❌ Error</span>
+                    </>
+                  ) : uploading[preview.id] === 100 ? (
+                    <>
+                      <div className="progress-success">Upload complete</div>
+                      <span className="progress-text success">✅ Done</span>
+                    </>
+                  ) : (
+                    <>
+                      <div 
+                        className="progress-bar"
+                        style={{ width: `${uploading[preview.id]}%` }}
+                      />
+                      <span className="progress-text">{uploading[preview.id]}%</span>
+                    </>
+                  )}
                 </div>
               ) : (
                 <button 
