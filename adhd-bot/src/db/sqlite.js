@@ -122,6 +122,80 @@ export async function backup(destPath) {
 })();
 // === END PREPARE NORMALIZE SHIM ===
 
+//
+// === BEGIN PREPARE REBIND SHIM ===
+// Rebinds the *exported* `prepare` so all importers see normalized statements.
+// Avoids local-scope assignment. Adds granular error handling and diagnostics.
+(() => {
+  // Resolve exports object (CommonJS) without throwing on ESM builds
+  const hasCJS = (typeof module !== 'undefined') && module && module.exports;
+  const exp = hasCJS ? module.exports : (typeof exports !== 'undefined' ? exports : null);
+  if (!exp || typeof exp !== 'object') { return; }
+
+  // Find the original prepare from common export shapes
+  const candidates = [];
+  if (typeof exp.prepare === 'function') candidates.push(['exports.prepare', exp.prepare]);
+  if (exp.default && typeof exp.default.prepare === 'function') candidates.push(['exports.default.prepare', exp.default.prepare]);
+
+  // As a last resort, fall back to a top-level prepare symbol if present
+  if (candidates.length === 0 && typeof prepare === 'function') {
+    candidates.push(['(top-level) prepare', prepare]);
+  }
+  if (candidates.length === 0) { if (console && console.warn) console.warn('db-adapter: no prepare() export found'); return; }
+
+  function wrapStmt(stmt) {
+    try {
+      // Already better-sqlite3-like?
+      if (stmt && (typeof stmt.get === 'function' || typeof stmt.run === 'function' || typeof stmt.all === 'function')) {
+        return stmt;
+      }
+      // sqlite3 fallback returns function → expose as get/run/all
+      if (typeof stmt === 'function') {
+        return {
+          get: async (...args) => { try { return await stmt(...args); } catch (e) { if (console && console.error) console.error('db-adapter:get error:', e?.message); throw e; } },
+          run: async (...args) => { try { return await stmt(...args); } catch (e) { if (console && console.error) console.error('db-adapter:run error:', e?.message); throw e; } },
+          all: async (...args) => { try { return await stmt(...args); } catch (e) { if (console && console.error) console.error('db-adapter:all error:', e?.message); throw e; } },
+        };
+      }
+      return stmt; // unknown shape: leave untouched
+    } catch (e) {
+      if (console && console.error) console.error('db-adapter:wrapStmt failed:', e?.message);
+      return stmt;
+    }
+  }
+
+  function wrapPrepare(orig, label) {
+    return function normalizedPrepare(sql) {
+      try {
+        const s = orig(sql);
+        return wrapStmt(s);
+      } catch (e) {
+        if (console && console.error) console.error('db-adapter:prepare call failed (' + label + '):', e?.message);
+        throw e;
+      }
+    };
+  }
+
+  // Rebind on all found export locations
+  for (const [label, orig] of candidates) {
+    const wrapped = wrapPrepare(orig, label);
+    // Assign back to the same export object so importers see it
+    if (label === 'exports.prepare' && hasCJS) {
+      exp.prepare = wrapped;
+    } else if (label === 'exports.default.prepare' && exp.default) {
+      exp.default.prepare = wrapped;
+    } else if (label === '(top-level) prepare') {
+      // Best-effort: also mirror to module.exports.prepare if absent
+      if (hasCJS && typeof exp.prepare !== 'function') exp.prepare = wrapped;
+      // Keep local symbol updated if consumers in this file reference it
+      try { prepare = wrapped; } catch (_) { /* ignore if not writable */ }
+    }
+  }
+
+  if (console && console.info) console.info('db-adapter: prepare() normalized → {get,run,all}');
+})();
+// === END PREPARE REBIND SHIM ===
+
 // Graceful shutdown
 process.on('SIGINT', closeDb);
 process.on('SIGTERM', closeDb);
