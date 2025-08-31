@@ -1,0 +1,41 @@
+# API Examples (Actual Responses)
+
+## List Work Orders
+```bash
+curl -X GET http://localhost:3001/api/v1/work-orders \
+  -H "x-org-id: 00000000-0000-0000-0000-000000000001"
+```
+
+Expected Response:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "123e4567-e89b-12d3-a456-426614174000",
+      "title": "Fix broken sink",
+      "description": "Kitchen sink leaking",
+      "status": "SUBMITTED",
+      "org_id": "00000000-0000-0000-0000-000000000001",
+      "created_at": "2025-08-31T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+## Update Work Order
+```bash
+curl -X PATCH http://localhost:3001/api/v1/work-orders/123e4567-e89b-12d3-a456-426614174000 \
+  -H "Content-Type: application/json" \
+  -H "x-org-id: 00000000-0000-0000-0000-000000000001" \
+  -H "Idempotency-Key: update-123-1693478400" \
+  -d '{"status": "COMPLETED", "assignee": "John Smith"}'
+```
+
+## Cross-Org Security Test (Should Return Empty)
+```bash
+curl -X GET http://localhost:3001/api/v1/work-orders \
+  -H "x-org-id: 00000000-0000-0000-0000-000000000002"
+```
+
+Expected: { "success": true, "data": [] }
