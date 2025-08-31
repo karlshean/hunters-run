@@ -1,5 +1,9 @@
 // === DEMO SLICE: Work Orders List Component ===
 import React, { useState, useEffect } from 'react';
+import { PhotoUploader } from '../../features/photos/PhotoUploader';
+import { PhotoGallery } from '../../features/photos/PhotoGallery';
+import { RolePhotoPanel } from '../../features/photos/RolePhotoPanel';
+import '../../features/photos/photos.css';
 import './WorkOrdersList.css';
 
 interface WorkOrder {
@@ -90,6 +94,41 @@ const WorkOrdersList: React.FC = () => {
 
   return (
     <div className="work-orders-container">
+      {/* Demo Navigation - Feature Flagged */}
+      {process.env.FEATURE_DEMO_PHOTOS_UI === 'true' && (
+        <div style={{
+          background: '#f0f9ff',
+          border: '1px solid #0ea5e9',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            <strong>📸 Photo Demo Available!</strong> 
+            <span style={{ marginLeft: '8px', color: '#6b7280' }}>
+              See the complete photo-first workflow
+            </span>
+          </div>
+          <button
+            onClick={() => window.location.href = '/demo/photos'}
+            style={{
+              background: '#0ea5e9',
+              color: 'white',
+              border: 'none',
+              padding: '6px 12px',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              fontSize: '14px'
+            }}
+          >
+            View Demo
+          </button>
+        </div>
+      )}
+      
       <div className="work-orders-header">
         <h1>Work Orders</h1>
         <button
@@ -169,6 +208,22 @@ const WorkOrdersList: React.FC = () => {
                 <p>{selectedOrder.description}</p>
               </div>
 
+              {/* Photo Section - Feature Flagged */}
+              {process.env.FEATURE_DEMO_PHOTOS_UI === 'true' && (
+                <div className="detail-section photos-section">
+                  <h3>Photos</h3>
+                  <PhotoGallery workOrderId={selectedOrder.id} />
+                  <div style={{ marginTop: '16px' }}>
+                    <RolePhotoPanel
+                      workOrderId={selectedOrder.id}
+                      userRole="TENANT"
+                      currentStatus={selectedOrder.status}
+                      onStatusChange={(newStatus) => updateWorkOrder(selectedOrder.id, { status: newStatus })}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="timeline">
                 <h3>Status Timeline</h3>
                 <div className="timeline-item">
@@ -207,6 +262,7 @@ const CreateWorkOrderModal: React.FC<{
 }> = ({ onCreate, onCancel }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -215,9 +271,11 @@ const CreateWorkOrderModal: React.FC<{
     }
   };
 
+  const isPhotoFeatureEnabled = process.env.FEATURE_DEMO_PHOTOS_UI === 'true';
+
   return (
     <div className="modal-overlay">
-      <div className="modal">
+      <div className="modal" style={{ maxWidth: showPhotoUpload ? '600px' : '400px' }}>
         <h2>New Work Order</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-group">
@@ -239,6 +297,46 @@ const CreateWorkOrderModal: React.FC<{
               rows={3}
             />
           </div>
+          
+          {/* Photo Upload Section - Feature Flagged */}
+          {isPhotoFeatureEnabled && (
+            <div className="form-group">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <label>Add Photos</label>
+                <button
+                  type="button"
+                  onClick={() => setShowPhotoUpload(!showPhotoUpload)}
+                  style={{
+                    background: 'none',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    padding: '4px 8px',
+                    fontSize: '12px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {showPhotoUpload ? 'Hide' : 'Show'} Photo Upload
+                </button>
+              </div>
+              
+              {showPhotoUpload && (
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '16px' }}>
+                  <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '12px' }}>
+                    📸 Adding photos helps us understand the issue better and speeds up repairs!
+                  </div>
+                  <PhotoUploader
+                    workOrderId={`temp-${Date.now()}`} // Temporary ID for demo
+                    kind="TENANT_SUBMITTED"
+                    role="TENANT"
+                    maxFiles={3}
+                    helpText="Show us what needs fixing"
+                    onUploadComplete={() => {}}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          
           <div className="form-actions">
             <button type="button" onClick={onCancel}>Cancel</button>
             <button type="submit" className="btn-primary">Create Work Order</button>
