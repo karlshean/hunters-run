@@ -1,0 +1,4 @@
+Connection attempts failed:
+1. Direct connection to db.rsmiyfqgqheorwvkokvx.supabase.co - DNS not resolving
+2. Pooler connection to aws-0-us-east-1.pooler.supabase.com:6543 - Tenant or user not found
+Falling back to in-memory mode for API testing

@@ -1,0 +1,77 @@
+{
+  "timestamp": "2025-08-31T06:42:54.000Z",
+  "gates": {
+    "A1_endpoint_discovery": {
+      "status": "PASS",
+      "details": {
+        "static_discovery": {
+          "endpoints_found": [
+            {
+              "path": "/api/v1/work-orders",
+              "method": "GET",
+              "file": "demo-api/server-postgres.js",
+              "line": 99
+            },
+            {
+              "path": "/api/v1/work-orders/:id", 
+              "method": "GET",
+              "file": "demo-api/server-postgres.js",
+              "line": 153
+            },
+            {
+              "path": "/api/v1/work-orders",
+              "method": "POST", 
+              "file": "demo-api/server-postgres.js",
+              "line": 223
+            },
+            {
+              "path": "/api/v1/work-orders/:id",
+              "method": "PATCH",
+              "file": "demo-api/server-postgres.js", 
+              "line": 295
+            }
+          ]
+        },
+        "live_probe": {
+          "api_port": 3001,
+          "endpoint_tested": "/api/v1/work-orders",
+          "test_results": {
+            "valid_org_header": {
+              "org_id": "00000000-0000-0000-0000-000000000001",
+              "status": 200,
+              "response_valid": true,
+              "data_received": true
+            },
+            "unknown_org_header": {
+              "org_id": "99999999-9999-9999-9999-999999999999", 
+              "status": 200,
+              "response_valid": true,
+              "data_received": false
+            },
+            "missing_header": {
+              "status": 400,
+              "error": "Missing required header: x-org-id"
+            }
+          }
+        }
+      }
+    },
+    "A2_database_connectivity": {
+      "status": "FAIL",
+      "reason": "DNS resolution failed for database host",
+      "details": {
+        "database_url": "postgresql://***@db.rsmiyfqgqheorwvkokvx.supabase.co:5432/postgres",
+        "connection_error": "getaddrinfo ENOTFOUND db.rsmiyfqgqheorwvkokvx.supabase.co",
+        "fallback_mode": "in-memory data simulation",
+        "required_fixes": [
+          "Verify network connectivity to Supabase host",
+          "Check if app_user role exists: SELECT rolname FROM pg_roles WHERE rolname = 'app_user';",
+          "Verify app_user has correct privileges: NOBYPASSRLS, LOGIN enabled",
+          "Update DATABASE_URL to use app_user instead of postgres superuser"
+        ]
+      }
+    }
+  },
+  "overall_status": "GATE_FAILURE",
+  "next_steps": "Cannot proceed to Phase B (RLS proof) until Gate A2 passes"
+}

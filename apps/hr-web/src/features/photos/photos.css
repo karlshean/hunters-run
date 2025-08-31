@@ -1,0 +1,493 @@
+/* Photo UI Components Styles */
+.photo-uploader {
+  margin-bottom: 24px;
+}
+
+.upload-help {
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  color: #0c4a6e;
+}
+
+.upload-area {
+  border: 2px dashed #d1d5db;
+  border-radius: 12px;
+  padding: 40px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: #fafafa;
+}
+
+.upload-area:hover {
+  border-color: #4f46e5;
+  background: #f8fafc;
+}
+
+.upload-area.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f5f5f5;
+}
+
+.upload-content {
+  pointer-events: none;
+}
+
+.upload-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.upload-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.upload-link {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+
+.upload-sub {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.preview-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.preview-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.progress-bar {
+  height: 2px;
+  background: #4f46e5;
+  transition: width 0.3s;
+  margin-bottom: 4px;
+}
+
+.progress-text {
+  font-size: 10px;
+}
+
+.preview-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  line-height: 1;
+}
+
+/* Photo Gallery */
+.photo-gallery {
+  padding: 20px 0;
+}
+
+.photo-gallery.empty {
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gallery-empty-state {
+  text-align: center;
+  color: #6b7280;
+}
+
+.gallery-empty-state .empty-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.gallery-empty-state h3 {
+  margin: 0 0 8px 0;
+  color: #374151;
+}
+
+.photo-section {
+  margin-bottom: 32px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.section-header h3 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 18px;
+}
+
+.photo-count-badge {
+  background: #4f46e5;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.photo-thumb {
+  position: relative;
+  aspect-ratio: 4/3;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.photo-thumb:hover {
+  transform: scale(1.02);
+}
+
+.photo-thumb:focus {
+  outline: 2px solid #4f46e5;
+  outline-offset: 2px;
+}
+
+.photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  color: white;
+  padding: 12px 8px 8px;
+  font-size: 12px;
+}
+
+.empty-photos {
+  text-align: center;
+  padding: 40px;
+  color: #6b7280;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+}
+
+.empty-photos .empty-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+/* Role Photo Panel */
+.role-photo-panel {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.panel-header h3 {
+  margin: 0 0 16px 0;
+  color: #1f2937;
+}
+
+.help-banner {
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 6px;
+  padding: 12px;
+  font-size: 14px;
+  color: #0c4a6e;
+  margin-bottom: 16px;
+}
+
+.photo-tips {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 16px;
+}
+
+.add-photos-btn, .add-context-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.2s;
+}
+
+.btn-primary {
+  background: #4f46e5;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #4338ca;
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-secondary:hover {
+  background: #e5e7eb;
+}
+
+.photo-requirements {
+  margin-bottom: 20px;
+}
+
+.requirement {
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.requirement.met {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.requirement.unmet {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.photo-action-buttons {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.btn-outline {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn-outline:hover {
+  border-color: #4f46e5;
+  color: #4f46e5;
+}
+
+.status-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-status {
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-success {
+  background: #10b981;
+  color: white;
+}
+
+.btn-success:hover {
+  background: #059669;
+}
+
+.btn-disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Lightbox */
+.lightbox-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.lightbox-container {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 32px;
+  cursor: pointer;
+  z-index: 1001;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-content {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.lightbox-image-container {
+  max-width: 80vw;
+  max-height: 70vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: white;
+  font-size: 32px;
+  width: 60px;
+  height: 60px;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.lightbox-nav:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.lightbox-prev {
+  left: -80px;
+}
+
+.lightbox-next {
+  right: -80px;
+}
+
+.lightbox-caption {
+  text-align: center;
+  color: white;
+  margin-top: 16px;
+}
+
+.caption-title {
+  font-weight: 500;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.caption-meta {
+  font-size: 14px;
+  color: #d1d5db;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .photo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  }
+
+  .photo-action-buttons {
+    flex-direction: column;
+  }
+
+  .status-actions {
+    flex-direction: column;
+  }
+
+  .lightbox-nav {
+    position: fixed;
+    top: 50%;
+  }
+
+  .lightbox-prev {
+    left: 20px;
+  }
+
+  .lightbox-next {
+    right: 20px;
+  }
+}

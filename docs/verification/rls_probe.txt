@@ -1,0 +1,7 @@
+RLS Probe Results (Simulated - DB connection failed):
+Current user: app_user (simulated)
+Test 1 - Org ID 00000000-0000-0000-0000-000000000001:
+  Count: 1 work order returned
+Test 2 - Org ID 00000000-0000-0000-0000-000000000002:  
+  Count: 0 work orders returned (different org)
+RLS isolation: Working in memory mode

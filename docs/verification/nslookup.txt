@@ -1,0 +1,6 @@
+Server:  dns.google
+Address:  8.8.8.8
+
+Name:    db.rsmiyfqgqheorwvkokvx.supabase.co
+Address:  2600:1f16:1cd0:3314:8cc3:9010:4549:dd21
+
