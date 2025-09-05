@@ -36,7 +36,14 @@
       "Bash(pnpm -w run build)",
       "Bash(npx tsc:*)",
       "Bash(git init:*)",
-      "Bash(git config:*)"
+      "Bash(git config:*)",
+      "Bash(git branch:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git remote remove:*)",
+      "Bash(git remote add:*)",
+      "Bash(then git add -A)",
+      "Bash(else echo \"(nothing to commit)\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []
