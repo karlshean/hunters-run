@@ -36,4 +36,12 @@ evidence/
 test-*.mjs
 test-*.sh
 test-*.ps1
-setup-test-orgs.mjs
+setup-test-orgs.mjs.env
+.env.*.local
+**/node_modules/
+dist/
+.next/
+tmp/
+
+.local/
+.localsecure/

@@ -94,8 +94,8 @@ const WorkOrdersList: React.FC = () => {
 
   return (
     <div className="work-orders-container">
-      {/* Demo Navigation - Feature Flagged */}
-      {process.env.FEATURE_DEMO_PHOTOS_UI === 'true' && (
+      {/* Demo Navigation - Always show for demo */}
+      {true && (
         <div style={{
           display: 'flex',
           gap: '12px',

@@ -1,1776 +1,271 @@
-# === HUNTERS RUN • Photo-First UI Demo (Mocked Services Only) ===
+[2025-09-01 10:12 ET] ADHD App — Zip Export CCC (copy-paste for Claude Code)
+Goal: one-shot script to collect everything I need (ADHD bot + platform schemas/config) into a single redacted ZIP.
+Secrets safe: the script copies .env and Firebase service JSON only after masking sensitive values.
+Run from: your ADHD bot repo root. If your shared platform lives elsewhere, set the PLATFORM_DIR variable (both variants show how).
 
-$ErrorActionPreference = “Stop”
-$ROOT = “C:\users\ka\myprojects3\hunters-run”
-Set-Location $ROOT
+Option A — Windows PowerShell (recommended on Windows) — Fully AI-Executable
+# === CCC-EXPORT-PLATFORM-ADHD.ps1 ===
+# Run from the ADHD bot repository root (PowerShell). Requires no admin rights.
 
-Write-Host “=== PHOTO-FIRST UI DEMO BUILD ===” -ForegroundColor Cyan
-Write-Host “Goal: Demo-ready photo workflows using mock services only” -ForegroundColor Gray
+$ErrorActionPreference = "Stop"
 
-# 0) Safety + feature branch
+# 0) Config — set PLATFORM_DIR if your shared platform SQL/RLS lives elsewhere
+$ROOT = (Get-Location).Path
+$PLATFORM_DIR = if ($env:PLATFORM_DIR -and (Test-Path $env:PLATFORM_DIR)) { $env:PLATFORM_DIR } else { $null }
 
-git add -A 2>$null
-git stash push -u -m “pre-photo-ui $(Get-Date -Format s)” 2>$null | Out-Null
-git checkout -B feature/photo-ui-demo 2>$null
+# 1) Stamp + paths
+$timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$exportName = "adhd_platform_export_$timestamp"
+$TMP = Join-Path $env:TEMP $exportName
+$OUTDIR = $TMP
+$OUTZIP = Join-Path ([Environment]::GetFolderPath('Desktop')) ("adhd_platform_bundle_$timestamp.zip")
 
-# 1) Verify project structure
+# Clean temp
+if (Test-Path $OUTDIR) { Remove-Item -Recurse -Force $OUTDIR }
+New-Item -ItemType Directory -Force -Path $OUTDIR | Out-Null
+New-Item -ItemType Directory -Force -Path "$OUTDIR\adhd" | Out-Null
+New-Item -ItemType Directory -Force -Path "$OUTDIR\platform" | Out-Null
+New-Item -ItemType Directory -Force -Path "$OUTDIR\docs" | Out-Null
 
-if (!(Test-Path “apps/hr-web”)) {
-throw “Missing apps/hr-web - not in hunters-run root?”
+function Copy-TreeSafe {
+  param([string]$Src, [string]$Dst)
+  robocopy $Src $Dst /E /NFL /NDL /NJH /NJS /NP `
+    /XF "*.sqlite" "*.log" ".DS_Store" `
+    /XD "node_modules" ".git" "dist" "build" ".turbo" ".next" ".cache" "coverage" | Out-Null
 }
 
-Write-Host “`n[1/5] Setting up feature flag…” -ForegroundColor Green
-
-# Add feature flag to web app
-
-$webEnv = “apps/hr-web/.env”
-if (!(Test-Path $webEnv)) { New-Item -ItemType File $webEnv | Out-Null }
-$envContent = Get-Content $webEnv -Raw -ErrorAction SilentlyContinue
-if ($envContent -notmatch “FEATURE_DEMO_PHOTOS_UI”) {
-Add-Content $webEnv “`nFEATURE_DEMO_PHOTOS_UI=true`n# Photo UI demo components”
-Write-Host “Added FEATURE_DEMO_PHOTOS_UI to apps/hr-web/.env” -ForegroundColor Yellow
-}
-
-Write-Host “`n[2/5] Creating photo components…” -ForegroundColor Green
-
-# Create features directory structure
-
-$photoDir = “apps/hr-web/src/features/photos”
-if (!(Test-Path $photoDir)) { New-Item -ItemType Directory $photoDir -Force | Out-Null }
-
-# Mock Photo Service
-
-$mockService = @”
-// Mock Photo Service - No Network Calls
-export interface Photo {
-id: string;
-workOrderId: string;
-kind: ‘TENANT_SUBMITTED’ | ‘MANAGER_NOTE’ | ‘TECH_BEFORE’ | ‘TECH_DURING’ | ‘TECH_AFTER’;
-storageKey: string;
-url: string;
-role: ‘TENANT’ | ‘MANAGER’ | ‘TECH’;
-createdAt: string;
-createdBy: string;
-}
-
-export interface PhotoGroups {
-before: Photo[];
-during: Photo[];
-after: Photo[];
-tenant: Photo[];
-manager: Photo[];
-}
-
-class MockPhotoService {
-private photos: Map<string, Photo[]> = new Map();
-
-constructor() {
-// Seed with demo data
-this.seedDemoData();
-}
-
-private seedDemoData() {
-const demoPhotos: Photo[] = [
-{
-id: ‘demo-1’,
-workOrderId: ‘wo-demo-1’,
-kind: ‘TENANT_SUBMITTED’,
-storageKey: ‘demo/tenant_1.jpg’,
-url: ‘https://picsum.photos/400/300?random=1’,
-role: ‘TENANT’,
-createdAt: new Date().toISOString(),
-createdBy: ‘demo-tenant’
-},
-{
-id: ‘demo-2’,
-workOrderId: ‘wo-demo-1’,
-kind: ‘TECH_BEFORE’,
-storageKey: ‘demo/tech_before.jpg’,
-url: ‘https://picsum.photos/400/300?random=2’,
-role: ‘TECH’,
-createdAt: new Date().toISOString(),
-createdBy: ‘demo-tech’
-}
-];
-
-```
-this.photos.set('wo-demo-1', demoPhotos);
-```
-
-}
-
-async list(workOrderId: string): Promise<PhotoGroups> {
-const photos = this.photos.get(workOrderId) || [];
-
-```
-return {
-  before: photos.filter(p => p.kind === 'TECH_BEFORE'),
-  during: photos.filter(p => p.kind === 'TECH_DURING'),
-  after: photos.filter(p => p.kind === 'TECH_AFTER'),
-  tenant: photos.filter(p => p.kind === 'TENANT_SUBMITTED'),
-  manager: photos.filter(p => p.kind === 'MANAGER_NOTE')
-};
-```
-
-}
-
-async requestUpload(kind: Photo[‘kind’]): Promise<{uploadUrl: string; storageKey: string}> {
-// Simulate API delay
-await new Promise(resolve => setTimeout(resolve, 100));
-
-```
-const timestamp = Date.now();
-const random = Math.random().toString(36).substr(2, 9);
-
-return {
-  uploadUrl: `https://fake-storage.example.com/upload/${timestamp}`,
-  storageKey: `demo/${kind.toLowerCase()}_${random}.jpg`
-};
-```
-
-}
-
-async upload(uploadUrl: string, file: File): Promise<string> {
-// Simulate upload with progress
-const delay = Math.random() * 500 + 300; // 300-800ms
-await new Promise(resolve => setTimeout(resolve, delay));
-
-```
-// Return mock URL
-return `https://picsum.photos/400/300?random=${Date.now()}`;
-```
-
-}
-
-async saveMeta(workOrderId: string, kind: Photo[‘kind’], storageKey: string, role: Photo[‘role’], url: string): Promise<Photo> {
-const photo: Photo = {
-id: `photo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-workOrderId,
-kind,
-storageKey,
-url,
-role,
-createdAt: new Date().toISOString(),
-createdBy: `demo-${role.toLowerCase()}`
-};
-
-```
-const existing = this.photos.get(workOrderId) || [];
-existing.push(photo);
-this.photos.set(workOrderId, existing);
-
-return photo;
-```
-
-}
-
-getPhotoCount(workOrderId: string): {before: number; during: number; after: number} {
-const photos = this.photos.get(workOrderId) || [];
-return {
-before: photos.filter(p => p.kind === ‘TECH_BEFORE’).length,
-during: photos.filter(p => p.kind === ‘TECH_DURING’).length,
-after: photos.filter(p => p.kind === ‘TECH_AFTER’).length
-};
-}
-}
-
-export const mockPhotoService = new MockPhotoService();
-“@
-
-$mockService | Out-File “$photoDir/mockPhotoService.ts” -Encoding UTF8
-
-# Photo Uploader Component
-
-$photoUploader = @”
-import React, { useState, useRef } from ‘react’;
-import { mockPhotoService, Photo } from ‘./mockPhotoService’;
-import ‘./photos.css’;
-
-interface PhotoUploaderProps {
-workOrderId: string;
-kind: Photo[‘kind’];
-role: Photo[‘role’];
-maxFiles?: number;
-onUploadComplete?: (photo: Photo) => void;
-disabled?: boolean;
-helpText?: string;
-}
-
-export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
-workOrderId,
-kind,
-role,
-maxFiles = 5,
-onUploadComplete,
-disabled = false,
-helpText
-}) => {
-const [uploading, setUploading] = useState<{[key: string]: number}>({});
-const [previews, setPreviews] = useState<{file: File; url: string; id: string}[]>([]);
-const fileInputRef = useRef<HTMLInputElement>(null);
-
-const handleDrop = (e: React.DragEvent) => {
-e.preventDefault();
-const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith(‘image/’));
-handleFiles(files);
-};
-
-const handleFiles = (files: File[]) => {
-if (disabled) return;
-
-```
-const remaining = maxFiles - previews.length;
-const filesToProcess = files.slice(0, remaining);
-
-filesToProcess.forEach(file => {
-  const id = `preview-${Date.now()}-${Math.random()}`;
-  const url = URL.createObjectURL(file);
-  
-  setPreviews(prev => [...prev, { file, url, id }]);
-  uploadFile(file, id);
-});
-```
-
-};
-
-const uploadFile = async (file: File, previewId: string) => {
-try {
-setUploading(prev => ({ …prev, [previewId]: 0 }));
-
-```
-  // Simulate progress
-  for (let i = 0; i <= 100; i += 20) {
-    setUploading(prev => ({ ...prev, [previewId]: i }));
-    await new Promise(resolve => setTimeout(resolve, 100));
+function Mask-EnvFile {
+  param([string]$Src, [string]$Dst)
+  $lines = Get-Content -LiteralPath $Src -Raw -ErrorAction SilentlyContinue
+  if ($null -eq $lines) { return }
+  $masked = ($lines -split "`n") | ForEach-Object {
+    if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$') {
+      "$($matches[1])=***REDACTED***"
+    } else { $_ }
   }
-
-  // Get upload URL
-  const { uploadUrl, storageKey } = await mockPhotoService.requestUpload(kind);
-  
-  // Upload file
-  const photoUrl = await mockPhotoService.upload(uploadUrl, file);
-  
-  // Save metadata
-  const photo = await mockPhotoService.saveMeta(workOrderId, kind, storageKey, role, photoUrl);
-  
-  // Complete upload
-  setUploading(prev => {
-    const updated = { ...prev };
-    delete updated[previewId];
-    return updated;
-  });
-  
-  onUploadComplete?.(photo);
-  
-} catch (error) {
-  console.error('Upload failed:', error);
-  setUploading(prev => {
-    const updated = { ...prev };
-    delete updated[previewId];
-    return updated;
-  });
-}
-```
-
-};
-
-const removePreview = (id: string) => {
-setPreviews(prev => prev.filter(p => p.id !== id));
-setUploading(prev => {
-const updated = { …prev };
-delete updated[id];
-return updated;
-});
-};
-
-const openFileDialog = () => {
-if (!disabled && fileInputRef.current) {
-fileInputRef.current.click();
-}
-};
-
-return (
-<div className="photo-uploader">
-{helpText && (
-<div className="upload-help">
-📸 {helpText}
-</div>
-)}
-
-```
-  <div 
-    className={`upload-area ${disabled ? 'disabled' : ''}`}
-    onDrop={handleDrop}
-    onDragOver={(e) => e.preventDefault()}
-    onClick={openFileDialog}
-  >
-    <input
-      ref={fileInputRef}
-      type="file"
-      accept="image/*"
-      capture="environment"
-      multiple={maxFiles > 1}
-      onChange={(e) => handleFiles(Array.from(e.target.files || []))}
-      style={{ display: 'none' }}
-      disabled={disabled}
-    />
-    
-    <div className="upload-content">
-      <div className="upload-icon">📷</div>
-      <div className="upload-text">
-        Drag photos here or <span className="upload-link">browse</span>
-      </div>
-      <div className="upload-sub">Up to {maxFiles} photos • JPG, PNG</div>
-    </div>
-  </div>
-
-  {previews.length > 0 && (
-    <div className="preview-grid">
-      {previews.map(preview => (
-        <div key={preview.id} className="preview-item">
-          <img src={preview.url} alt="Preview" className="preview-image" />
-          
-          {uploading[preview.id] !== undefined ? (
-            <div className="preview-progress">
-              <div 
-                className="progress-bar"
-                style={{ width: `${uploading[preview.id]}%` }}
-              />
-              <span className="progress-text">{uploading[preview.id]}%</span>
-            </div>
-          ) : (
-            <button 
-              className="preview-remove"
-              onClick={() => removePreview(preview.id)}
-              aria-label="Remove photo"
-            >
-              ×
-            </button>
-          )}
-        </div>
-      ))}
-    </div>
-  )}
-</div>
-```
-
-);
-};
-“@
-
-$photoUploader | Out-File “$photoDir/PhotoUploader.tsx” -Encoding UTF8
-
-# Photo Gallery Component
-
-$photoGallery = @”
-import React, { useState, useEffect } from ‘react’;
-import { mockPhotoService, PhotoGroups, Photo } from ‘./mockPhotoService’;
-import { Lightbox } from ‘./Lightbox’;
-import ‘./photos.css’;
-
-interface PhotoGalleryProps {
-workOrderId: string;
-onPhotoClick?: (photo: Photo) => void;
-}
-
-export const PhotoGallery: React.FC<PhotoGalleryProps> = ({ workOrderId }) => {
-const [photoGroups, setPhotoGroups] = useState<PhotoGroups>({
-before: [],
-during: [],
-after: [],
-tenant: [],
-manager: []
-});
-const [lightboxPhoto, setLightboxPhoto] = useState<Photo | null>(null);
-const [allPhotos, setAllPhotos] = useState<Photo[]>([]);
-
-useEffect(() => {
-loadPhotos();
-}, [workOrderId]);
-
-const loadPhotos = async () => {
-const groups = await mockPhotoService.list(workOrderId);
-setPhotoGroups(groups);
-
-```
-// Flatten for lightbox navigation
-const all = [
-  ...groups.before,
-  ...groups.during, 
-  ...groups.after,
-  ...groups.tenant,
-  ...groups.manager
-];
-setAllPhotos(all);
-```
-
-};
-
-const openLightbox = (photo: Photo) => {
-setLightboxPhoto(photo);
-};
-
-const PhotoSection: React.FC<{
-title: string;
-photos: Photo[];
-emptyText: string;
-badge?: string;
-}> = ({ title, photos, emptyText, badge }) => (
-<div className="photo-section">
-<div className="section-header">
-<h3>{title}</h3>
-{badge && <span className="photo-count-badge">{badge}</span>}
-</div>
-
-```
-  {photos.length === 0 ? (
-    <div className="empty-photos">
-      <div className="empty-icon">📷</div>
-      <div className="empty-text">{emptyText}</div>
-    </div>
-  ) : (
-    <div className="photo-grid">
-      {photos.map(photo => (
-        <div 
-          key={photo.id}
-          className="photo-thumb"
-          onClick={() => openLightbox(photo)}
-          onKeyDown={(e) => e.key === 'Enter' && openLightbox(photo)}
-          tabIndex={0}
-          role="button"
-          aria-label={`View ${photo.kind} photo`}
-        >
-          <img src={photo.url} alt={photo.kind} />
-          <div className="photo-overlay">
-            <span className="photo-time">
-              {new Date(photo.createdAt).toLocaleTimeString()}
-            </span>
-          </div>
-        </div>
-      ))}
-    </div>
-  )}
-</div>
-```
-
-);
-
-const isEmpty = allPhotos.length === 0;
-
-if (isEmpty) {
-return (
-<div className="photo-gallery empty">
-<div className="gallery-empty-state">
-<div className="empty-icon">📸</div>
-<h3>No photos yet</h3>
-<p>Add your first photo to get started</p>
-</div>
-</div>
-);
-}
-
-return (
-<div className="photo-gallery">
-<PhotoSection
-title="Before Work"
-photos={photoGroups.before}
-emptyText="No before photos yet"
-badge={photoGroups.before.length > 0 ? photoGroups.before.length.toString() : undefined}
-/>
-
-```
-  <PhotoSection
-    title="During Work"
-    photos={photoGroups.during}
-    emptyText="No progress photos yet"
-    badge={photoGroups.during.length > 0 ? photoGroups.during.length.toString() : undefined}
-  />
-  
-  <PhotoSection
-    title="After Work"
-    photos={photoGroups.after}
-    emptyText="No completion photos yet"
-    badge={photoGroups.after.length > 0 ? photoGroups.after.length.toString() : undefined}
-  />
-  
-  <PhotoSection
-    title="Tenant Photos"
-    photos={photoGroups.tenant}
-    emptyText="No tenant photos"
-    badge={photoGroups.tenant.length > 0 ? photoGroups.tenant.length.toString() : undefined}
-  />
-  
-  <PhotoSection
-    title="Manager Notes"
-    photos={photoGroups.manager}
-    emptyText="No manager photos"
-    badge={photoGroups.manager.length > 0 ? photoGroups.manager.length.toString() : undefined}
-  />
-
-  {lightboxPhoto && (
-    <Lightbox
-      photos={allPhotos}
-      currentPhoto={lightboxPhoto}
-      onClose={() => setLightboxPhoto(null)}
-      onNavigate={setLightboxPhoto}
-    />
-  )}
-</div>
-```
-
-);
-};
-“@
-
-$photoGallery | Out-File “$photoDir/PhotoGallery.tsx” -Encoding UTF8
-
-# Role Photo Panel Component
-
-$rolePhotoPanel = @”
-import React, { useState, useEffect } from ‘react’;
-import { mockPhotoService, Photo } from ‘./mockPhotoService’;
-import { PhotoUploader } from ‘./PhotoUploader’;
-import ‘./photos.css’;
-
-interface RolePhotoPanelProps {
-workOrderId: string;
-userRole: ‘TENANT’ | ‘MANAGER’ | ‘TECH’;
-currentStatus: string;
-onStatusChange?: (newStatus: string) => void;
-onPhotoAdded?: () => void;
-}
-
-export const RolePhotoPanel: React.FC<RolePhotoPanelProps> = ({
-workOrderId,
-userRole,
-currentStatus,
-onStatusChange,
-onPhotoAdded
-}) => {
-const [photoCounts, setPhotoCounts] = useState({ before: 0, during: 0, after: 0 });
-const [showUploader, setShowUploader] = useState<Photo[‘kind’] | null>(null);
-
-useEffect(() => {
-loadPhotoCounts();
-}, [workOrderId]);
-
-const loadPhotoCounts = async () => {
-const counts = mockPhotoService.getPhotoCount(workOrderId);
-setPhotoCounts(counts);
-};
-
-const handlePhotoAdded = (photo: Photo) => {
-loadPhotoCounts();
-setShowUploader(null);
-onPhotoAdded?.();
-};
-
-const canStartWork = photoCounts.before > 0;
-const canComplete = photoCounts.during > 0 && photoCounts.after > 0;
-
-if (userRole === ‘TENANT’) {
-return (
-<div className="role-photo-panel tenant">
-<div className="panel-header">
-<h3>Add Photos</h3>
-<div className="help-banner">
-📸 Photos help us fix it faster. Add up to 5 quick shots.
-</div>
-</div>
-
-```
-    <div className="photo-tips">
-      <strong>Tips:</strong> Start with a wide shot, then close-up. Good light helps.
-    </div>
-
-    {showUploader ? (
-      <PhotoUploader
-        workOrderId={workOrderId}
-        kind="TENANT_SUBMITTED"
-        role="TENANT"
-        maxFiles={5}
-        onUploadComplete={handlePhotoAdded}
-        helpText="Show us what needs fixing"
-      />
-    ) : (
-      <button 
-        className="btn-primary add-photos-btn"
-        onClick={() => setShowUploader('TENANT_SUBMITTED')}
-      >
-        📷 Add Photos
-      </button>
-    )}
-  </div>
-);
-```
-
-}
-
-if (userRole === ‘MANAGER’) {
-return (
-<div className="role-photo-panel manager">
-<div className="panel-header">
-<h3>Manager Actions</h3>
-</div>
-
-```
-    {showUploader ? (
-      <PhotoUploader
-        workOrderId={workOrderId}
-        kind="MANAGER_NOTE"
-        role="MANAGER"
-        maxFiles={3}
-        onUploadComplete={handlePhotoAdded}
-        helpText="Add context or additional information"
-      />
-    ) : (
-      <button 
-        className="btn-secondary add-context-btn"
-        onClick={() => setShowUploader('MANAGER_NOTE')}
-      >
-        📝 Add Context Photo
-      </button>
-    )}
-  </div>
-);
-```
-
-}
-
-if (userRole === ‘TECH’) {
-return (
-<div className="role-photo-panel tech">
-<div className="panel-header">
-<h3>Technician Actions</h3>
-</div>
-
-```
-    <div className="tech-photo-actions">
-      <div className="photo-requirements">
-        <div className={`requirement ${photoCounts.before > 0 ? 'met' : 'unmet'}`}>
-          {photoCounts.before > 0 ? '✅' : '⏳'} Before photos ({photoCounts.before})
-        </div>
-        <div className={`requirement ${photoCounts.during > 0 ? 'met' : 'unmet'}`}>
-          {photoCounts.during > 0 ? '✅' : '⏳'} During photos ({photoCounts.during})
-        </div>
-        <div className={`requirement ${photoCounts.after > 0 ? 'met' : 'unmet'}`}>
-          {photoCounts.after > 0 ? '✅' : '⏳'} After photos ({photoCounts.after})
-        </div>
-      </div>
-
-      <div className="photo-action-buttons">
-        {showUploader ? (
-          <PhotoUploader
-            workOrderId={workOrderId}
-            kind={showUploader}
-            role="TECH"
-            maxFiles={3}
-            onUploadComplete={handlePhotoAdded}
-            helpText={`Add ${showUploader.split('_')[1].toLowerCase()} photos`}
-          />
-        ) : (
-          <>
-            <button 
-              className="btn-outline"
-              onClick={() => setShowUploader('TECH_BEFORE')}
-            >
-              📷 Add Before
-            </button>
-            <button 
-              className="btn-outline"
-              onClick={() => setShowUploader('TECH_DURING')}
-            >
-              📷 Add During
-            </button>
-            <button 
-              className="btn-outline"
-              onClick={() => setShowUploader('TECH_AFTER')}
-            >
-              📷 Add After
-            </button>
-          </>
-        )}
-      </div>
-
-      <div className="status-actions">
-        <button
-          className={`btn-status ${canStartWork ? 'btn-primary' : 'btn-disabled'}`}
-          disabled={!canStartWork}
-          onClick={() => canStartWork && onStatusChange?.('IN_PROGRESS')}
-          title={!canStartWork ? 'Add before photos first' : 'Start work'}
-        >
-          🚀 Start Work
-        </button>
-        
-        <button
-          className={`btn-status ${canComplete ? 'btn-success' : 'btn-disabled'}`}
-          disabled={!canComplete}
-          onClick={() => canComplete && onStatusChange?.('COMPLETED')}
-          title={!canComplete ? 'Add during and after photos first' : 'Mark complete'}
-        >
-          ✅ Complete
-        </button>
-      </div>
-    </div>
-  </div>
-);
-```
-
-}
-
-return null;
-};
-“@
-
-$rolePhotoPanel | Out-File “$photoDir/RolePhotoPanel.tsx” -Encoding UTF8
-
-# Lightbox Component
-
-$lightbox = @”
-import React, { useEffect, useCallback } from ‘react’;
-import { Photo } from ‘./mockPhotoService’;
-import ‘./photos.css’;
-
-interface LightboxProps {
-photos: Photo[];
-currentPhoto: Photo;
-onClose: () => void;
-onNavigate: (photo: Photo) => void;
-}
-
-export const Lightbox: React.FC<LightboxProps> = ({
-photos,
-currentPhoto,
-onClose,
-onNavigate
-}) => {
-const currentIndex = photos.findIndex(p => p.id === currentPhoto.id);
-
-const goNext = useCallback(() => {
-if (currentIndex < photos.length - 1) {
-onNavigate(photos[currentIndex + 1]);
-}
-}, [currentIndex, photos, onNavigate]);
-
-const goPrevious = useCallback(() => {
-if (currentIndex > 0) {
-onNavigate(photos[currentIndex - 1]);
-}
-}, [currentIndex, photos, onNavigate]);
-
-const handleKeyDown = useCallback((e: KeyboardEvent) => {
-if (e.key === ‘Escape’) onClose();
-if (e.key === ‘ArrowRight’) goNext();
-if (e.key === ‘ArrowLeft’) goPrevious();
-}, [onClose, goNext, goPrevious]);
-
-useEffect(() => {
-document.addEventListener(‘keydown’, handleKeyDown);
-document.body.style.overflow = ‘hidden’;
-
-```
-return () => {
-  document.removeEventListener('keydown', handleKeyDown);
-  document.body.style.overflow = '';
-};
-```
-
-}, [handleKeyDown]);
-
-const formatKind = (kind: string) => {
-return kind.replace(’_’, ’ ’).toLowerCase()
-.replace(/\b\w/g, l => l.toUpperCase());
-};
-
-return (
-<div className="lightbox-overlay" onClick={onClose}>
-<div className=“lightbox-container” onClick={e => e.stopPropagation()}>
-<button 
-className="lightbox-close"
-onClick={onClose}
-aria-label="Close lightbox"
->
-×
-</button>
-
-```
-    <div className="lightbox-content">
-      {currentIndex > 0 && (
-        <button 
-          className="lightbox-nav lightbox-prev"
-          onClick={goPrevious}
-          aria-label="Previous photo"
-        >
-          ‹
-        </button>
-      )}
-
-      <div className="lightbox-image-container">
-        <img 
-          src={currentPhoto.url} 
-          alt={formatKind(currentPhoto.kind)}
-          className="lightbox-image"
-        />
-      </div>
-
-      {currentIndex < photos.length - 1 && (
-        <button 
-          className="lightbox-nav lightbox-next"
-          onClick={goNext}
-          aria-label="Next photo"
-        >
-          ›
-        </button>
-      )}
-    </div>
-
-    <div className="lightbox-caption">
-      <div className="caption-title">{formatKind(currentPhoto.kind)}</div>
-      <div className="caption-meta">
-        {new Date(currentPhoto.createdAt).toLocaleString()} • 
-        Photo {currentIndex + 1} of {photos.length}
-      </div>
-    </div>
-  </div>
-</div>
-```
-
-);
-};
-“@
-
-$lightbox | Out-File “$photoDir/Lightbox.tsx” -Encoding UTF8
-
-Write-Host “`n[3/5] Creating demo styles…” -ForegroundColor Green
-
-# CSS Styles
-
-$photosCSS = @”
-/* Photo UI Components Styles */
-.photo-uploader {
-margin-bottom: 24px;
-}
-
-.upload-help {
-background: #f0f9ff;
-border: 1px solid #0ea5e9;
-border-radius: 8px;
-padding: 12px 16px;
-margin-bottom: 16px;
-font-size: 14px;
-color: #0c4a6e;
-}
-
-.upload-area {
-border: 2px dashed #d1d5db;
-border-radius: 12px;
-padding: 40px 20px;
-text-align: center;
-cursor: pointer;
-transition: all 0.2s;
-background: #fafafa;
-}
-
-.upload-area:hover {
-border-color: #4f46e5;
-background: #f8fafc;
-}
-
-.upload-area.disabled {
-opacity: 0.5;
-cursor: not-allowed;
-background: #f5f5f5;
-}
-
-.upload-content {
-pointer-events: none;
-}
-
-.upload-icon {
-font-size: 48px;
-margin-bottom: 16px;
-}
-
-.upload-text {
-font-size: 16px;
-font-weight: 500;
-color: #374151;
-margin-bottom: 8px;
-}
-
-.upload-link {
-color: #4f46e5;
-text-decoration: underline;
-}
-
-.upload-sub {
-font-size: 14px;
-color: #6b7280;
-}
-
-.preview-grid {
-display: grid;
-grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-gap: 12px;
-margin-top: 16px;
-}
-
-.preview-item {
-position: relative;
-aspect-ratio: 1;
-border-radius: 8px;
-overflow: hidden;
-}
-
-.preview-image {
-width: 100%;
-height: 100%;
-object-fit: cover;
-}
-
-.preview-progress {
-position: absolute;
-bottom: 0;
-left: 0;
-right: 0;
-background: rgba(0, 0, 0, 0.7);
-color: white;
-padding: 4px 8px;
-font-size: 12px;
-}
-
-.progress-bar {
-height: 2px;
-background: #4f46e5;
-transition: width 0.3s;
-margin-bottom: 4px;
-}
-
-.progress-text {
-font-size: 10px;
-}
-
-.preview-remove {
-position: absolute;
-top: 4px;
-right: 4px;
-width: 24px;
-height: 24px;
-border-radius: 50%;
-border: none;
-background: rgba(0, 0, 0, 0.7);
-color: white;
-cursor: pointer;
-display: flex;
-align-items: center;
-justify-content: center;
-font-size: 16px;
-line-height: 1;
-}
-
-/* Photo Gallery */
-.photo-gallery {
-padding: 20px 0;
-}
-
-.photo-gallery.empty {
-min-height: 400px;
-display: flex;
-align-items: center;
-justify-content: center;
-}
-
-.gallery-empty-state {
-text-align: center;
-color: #6b7280;
-}
-
-.gallery-empty-state .empty-icon {
-font-size: 64px;
-margin-bottom: 16px;
-}
-
-.gallery-empty-state h3 {
-margin: 0 0 8px 0;
-color: #374151;
-}
-
-.photo-section {
-margin-bottom: 32px;
-}
-
-.section-header {
-display: flex;
-align-items: center;
-gap: 12px;
-margin-bottom: 16px;
-}
-
-.section-header h3 {
-margin: 0;
-color: #1f2937;
-font-size: 18px;
-}
-
-.photo-count-badge {
-background: #4f46e5;
-color: white;
-padding: 2px 8px;
-border-radius: 12px;
-font-size: 12px;
-font-weight: 500;
-}
-
-.photo-grid {
-display: grid;
-grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-gap: 12px;
-}
-
-.photo-thumb {
-position: relative;
-aspect-ratio: 4/3;
-border-radius: 8px;
-overflow: hidden;
-cursor: pointer;
-transition: transform 0.2s;
-}
-
-.photo-thumb:hover {
-transform: scale(1.02);
-}
-
-.photo-thumb:focus {
-outline: 2px solid #4f46e5;
-outline-offset: 2px;
-}
-
-.photo-thumb img {
-width: 100%;
-height: 100%;
-object-fit: cover;
-}
-
-.photo-overlay {
-position: absolute;
-bottom: 0;
-left: 0;
-right: 0;
-background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
-color: white;
-padding: 12px 8px 8px;
-font-size: 12px;
-}
-
-.empty-photos {
-text-align: center;
-padding: 40px;
-color: #6b7280;
-border: 1px dashed #d1d5db;
-border-radius: 8px;
-}
-
-.empty-photos .empty-icon {
-font-size: 32px;
-margin-bottom: 8px;
-}
-
-/* Role Photo Panel */
-.role-photo-panel {
-background: white;
-border: 1px solid #e5e7eb;
-border-radius: 12px;
-padding: 24px;
-margin-bottom: 24px;
-}
-
-.panel-header h3 {
-margin: 0 0 16px 0;
-color: #1f2937;
-}
-
-.help-banner {
-background: #f0f9ff;
-border: 1px solid #0ea5e9;
-border-radius: 6px;
-padding: 12px;
-font-size: 14px;
-color: #0c4a6e;
-margin-bottom: 16px;
-}
-
-.photo-tips {
-font-size: 14px;
-color: #6b7280;
-margin-bottom: 16px;
-}
-
-.add-photos-btn, .add-context-btn {
-padding: 12px 24px;
-border-radius: 8px;
-font-weight: 500;
-cursor: pointer;
-border: none;
-transition: background-color 0.2s;
-}
-
-.btn-primary {
-background: #4f46e5;
-color: white;
-}
-
-.btn-primary:hover {
-background: #4338ca;
-}
-
-.btn-secondary {
-background: #f3f4f6;
-color: #374151;
-border: 1px solid #d1d5db;
-}
-
-.btn-secondary:hover {
-background: #e5e7eb;
-}
-
-.photo-requirements {
-margin-bottom: 20px;
-}
-
-.requirement {
-padding: 8px 12px;
-margin-bottom: 8px;
-border-radius: 6px;
-font-size: 14px;
-}
-
-.requirement.met {
-background: #dcfce7;
-color: #166534;
-}
-
-.requirement.unmet {
-background: #fef3c7;
-color: #92400e;
-}
-
-.photo-action-buttons {
-display: flex;
-gap: 8px;
-margin-bottom: 20px;
-flex-wrap: wrap;
-}
-
-.btn-outline {
-padding: 8px 16px;
-border: 1px solid #d1d5db;
-background: white;
-color: #374151;
-border-radius: 6px;
-cursor: pointer;
-font-size: 14px;
-transition: all 0.2s;
-}
-
-.btn-outline:hover {
-border-color: #4f46e5;
-color: #4f46e5;
-}
-
-.status-actions {
-display: flex;
-gap: 12px;
-}
-
-.btn-status {
-padding: 12px 20px;
-border-radius: 8px;
-font-weight: 500;
-cursor: pointer;
-border: none;
-transition: all 0.2s;
-}
-
-.btn-success {
-background: #10b981;
-color: white;
-}
-
-.btn-success:hover {
-background: #059669;
-}
-
-.btn-disabled {
-background: #e5e7eb;
-color: #9ca3af;
-cursor: not-allowed;
-}
-
-/* Lightbox */
-.lightbox-overlay {
-position: fixed;
-top: 0;
-left: 0;
-right: 0;
-bottom: 0;
-background: rgba(0, 0, 0, 0.9);
-display: flex;
-align-items: center;
-justify-content: center;
-z-index: 1000;
-}
-
-.lightbox-container {
-position: relative;
-max-width: 90vw;
-max-height: 90vh;
-display: flex;
-flex-direction: column;
-}
-
-.lightbox-close {
-position: absolute;
-top: -40px;
-right: 0;
-background: none;
-border: none;
-color: white;
-font-size: 32px;
-cursor: pointer;
-z-index: 1001;
-width: 40px;
-height: 40px;
-display: flex;
-align-items: center;
-justify-content: center;
-}
-
-.lightbox-content {
-position: relative;
-display: flex;
-align-items: center;
-}
-
-.lightbox-image-container {
-max-width: 80vw;
-max-height: 70vh;
-display: flex;
-align-items: center;
-justify-content: center;
-}
-
-.lightbox-image {
-max-width: 100%;
-max-height: 100%;
-object-fit: contain;
-}
-
-.lightbox-nav {
-position: absolute;
-top: 50%;
-transform: translateY(-50%);
-background: rgba(0, 0, 0, 0.5);
-border: none;
-color: white;
-font-size: 32px;
-width: 60px;
-height: 60px;
-cursor: pointer;
-border-radius: 50%;
-display: flex;
-align-items: center;
-justify-content: center;
-transition: background-color 0.2s;
-}
-
-.lightbox-nav:hover {
-background: rgba(0, 0, 0, 0.7);
-}
-
-.lightbox-prev {
-left: -80px;
-}
-
-.lightbox-next {
-right: -80px;
-}
-
-.lightbox-caption {
-text-align: center;
-color: white;
-margin-top: 16px;
-}
-
-.caption-title {
-font-weight: 500;
-font-size: 16px;
-margin-bottom: 4px;
-}
-
-.caption-meta {
-font-size: 14px;
-color: #d1d5db;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-.photo-grid {
-grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-}
-
-.photo-action-buttons {
-flex-direction: column;
-}
-
-.status-actions {
-flex-direction: column;
-}
-
-.lightbox-nav {
-position: fixed;
-top: 50%;
-}
-
-.lightbox-prev {
-left: 20px;
-}
-
-.lightbox-next {
-right: 20px;
-}
-}
-“@
-
-$photosCSS | Out-File “$photoDir/photos.css” -Encoding UTF8
-
-Write-Host “`n[4/5] Creating demo page…” -ForegroundColor Green
-
-# Demo page combining all components
-
-$demoRoute = “apps/hr-web/src/routes”
-if (!(Test-Path $demoRoute)) { New-Item -ItemType Directory $demoRoute -Force | Out-Null }
-
-$demoPage = @”
-import React, { useState } from ‘react’;
-import { PhotoUploader } from ‘../features/photos/PhotoUploader’;
-import { PhotoGallery } from ‘../features/photos/PhotoGallery’;
-import { RolePhotoPanel } from ‘../features/photos/RolePhotoPanel’;
-import ‘../features/photos/photos.css’;
-
-export const DemoWorkOrderPhotos: React.FC = () => {
-const [currentRole, setCurrentRole] = useState<‘TENANT’ | ‘MANAGER’ | ‘TECH’>(‘TENANT’);
-const [workOrderStatus, setWorkOrderStatus] = useState(‘SUBMITTED’);
-const [refreshKey, setRefreshKey] = useState(0);
-
-const workOrderId = ‘wo-demo-1’;
-
-const handleStatusChange = (newStatus: string) => {
-setWorkOrderStatus(newStatus);
-alert(`Work order status changed to: ${newStatus}`);
-};
-
-const handlePhotoAdded = () => {
-// Force refresh of gallery
-setRefreshKey(prev => prev + 1);
-};
-
-const roleStyles = {
-TENANT: { background: ‘#eff6ff’, border: ‘2px solid #3b82f6’ },
-MANAGER: { background: ‘#f0fdf4’, border: ‘2px solid #10b981’ },
-TECH: { background: ‘#fef3c7’, border: ‘2px solid #f59e0b’ }
-};
-
-return (
-<div style={{ maxWidth: ‘1200px’, margin: ‘0 auto’, padding: ‘20px’ }}>
-<div style={{ marginBottom: ‘32px’, textAlign: ‘center’ }}>
-<h1>Photo-First Maintenance Demo</h1>
-<p>Demo the complete photo workflow for different user roles</p>
-
-```
-    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', marginTop: '16px' }}>
-      {(['TENANT', 'MANAGER', 'TECH'] as const).map(role => (
-        <button
-          key={role}
-          onClick={() => setCurrentRole(role)}
-          style={{
-            padding: '8px 16px',
-            border: currentRole === role ? '2px solid #4f46e5' : '1px solid #d1d5db',
-            background: currentRole === role ? '#4f46e5' : 'white',
-            color: currentRole === role ? 'white' : '#374151',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontWeight: '500'
-          }}
-        >
-          {role}
-        </button>
-      ))}
-    </div>
-    
-    <div style={{
-      ...roleStyles[currentRole],
-      padding: '16px',
-      borderRadius: '8px',
-      marginTop: '16px',
-      fontWeight: '500'
-    }}>
-      Current Role: {currentRole} | Work Order Status: {workOrderStatus}
-    </div>
-  </div>
-
-  <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '32px' }}>
-    <div>
-      <h2>Photo Gallery</h2>
-      <PhotoGallery 
-        key={refreshKey}
-        workOrderId={workOrderId} 
-      />
-    </div>
-
-    <div>
-      <h2>Role Panel</h2>
-      <RolePhotoPanel
-        workOrderId={workOrderId}
-        userRole={currentRole}
-        currentStatus={workOrderStatus}
-        onStatusChange={handleStatusChange}
-        onPhotoAdded={handlePhotoAdded}
-      />
-      
-      <div style={{
-        background: '#f9fafb',
-        border: '1px solid #e5e7eb',
-        borderRadius: '8px',
-        padding: '16px',
-        marginTop: '16px'
-      }}>
-        <h4 style={{ margin: '0 0 12px 0' }}>Demo Instructions</h4>
-        <div style={{ fontSize: '14px', color: '#6b7280', lineHeight: '1.5' }}>
-          <p><strong>Tenant:</strong> Add photos during initial request</p>
-          <p><strong>Manager:</strong> Add optional context photos</p>
-          <p><strong>Tech:</strong> Must add Before/During/After to progress status</p>
-          <p><strong>Gallery:</strong> Click photos to open lightbox viewer</p>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-```
-
-);
-};
-
-export default DemoWorkOrderPhotos;
-“@
-
-$demoPage | Out-File “$demoRoute/DemoWorkOrderPhotos.tsx” -Encoding UTF8
-
-Write-Host “`n[5/5] Creating evidence docs…” -ForegroundColor Green
-
-# Create docs structure
-
-@(“docs”, “docs/verification”, “docs/demo”) | ForEach-Object {
-if (!(Test-Path $*)) { New-Item -ItemType Directory $* -Force | Out-Null }
-}
-
-# Demo walkthrough
-
-$walkthrough = @”
-
-# Photo-First UI Demo Walkthrough (60 seconds)
-
-## Demo URL
-
-http://localhost:3000/demo/work-orders/wo-demo-1/photos
-
-## Quick Demo Script
-
-### Setup (10 seconds)
-
-1. Navigate to demo URL
-1. Notice role switcher at top (TENANT | MANAGER | TECH)
-1. Current state: Work order in SUBMITTED status
-
-### Tenant Flow (15 seconds)
-
-1. **Role: TENANT** (default)
-1. See photo encouragement banner: “Photos help us fix it faster”
-1. Click “Add Photos” button
-1. Drag/drop or click to upload (simulated)
-1. Watch upload progress and preview
-1. Photos appear in “Tenant Photos” section
-
-### Manager Flow (10 seconds)
-
-1. **Switch to: MANAGER**
-1. Click “Add Context Photo”
-1. Upload additional reference photo
-1. Photo appears in “Manager Notes” section
-
-### Tech Flow (20 seconds)
-
-1. **Switch to: TECH**
-1. Notice requirements checklist:
-- ⏳ Before photos (0)
-- ⏳ During photos (0)
-- ⏳ After photos (0)
-1. Notice “Start Work” button is disabled
-1. Click “Add Before” → upload → see ✅ Before photos (1)
-1. “Start Work” now enabled, click to change status
-1. Click “Add During” → upload
-1. Click “Add After” → upload
-1. “Complete” button now enabled
-
-### Gallery Interaction (5 seconds)
-
-1. Click any photo thumbnail → opens lightbox
-1. Use arrow keys or buttons to navigate
-1. Press Esc to close
-1. Photos grouped by: Before | During | After | Tenant | Manager
-
-## Key Demo Points
-
-- **Photo-first UX**: Photos encouraged at every step
-- **Role-based workflows**: Each role has different capabilities
-- **Status gating**: Tech can’t progress without required photos
-- **Smooth interactions**: Upload progress, previews, lightbox
-- **Accessibility**: Keyboard navigation, focus states, ARIA labels
-- **Mobile ready**: “Use camera” button, responsive design
-
-## Evidence Generated
-
-- All data stored in memory only (no database/storage calls)
-- Mock service simulates realistic upload delays and responses
-- Feature flag FEATURE_DEMO_PHOTOS_UI=true enables entire UI
-
-## Rollback
-
-Set FEATURE_DEMO_PHOTOS_UI=false to hide all new components
-“@
-
-$walkthrough | Out-File “docs/demo/photos-walkthrough.md” -Encoding UTF8
-
-# Evidence summary
-
-$evidence = @”
-
-# Photo UI Demo Evidence
-
-Generated: $(Get-Date -Format s)
-
-## Components Created
-
-✅ PhotoUploader.tsx - Drag/drop upload with progress
-✅ PhotoGallery.tsx - Grouped photo display with lightbox
-✅ RolePhotoPanel.tsx - Role-specific actions and gating
-✅ Lightbox.tsx - Keyboard accessible photo viewer
-✅ mockPhotoService.ts - In-memory photo storage
-✅ photos.css - Complete styling and responsive design
-✅ DemoWorkOrderPhotos.tsx - Combined demo page
-
-## Feature Flag
-
-✅ FEATURE_DEMO_PHOTOS_UI=true set in apps/hr-web/.env
-
-## Mock Data
-
-- Work Order ID: wo-demo-1
-- Seeded with 2 sample photos using placeholder URLs
-- All uploads stored in memory only
-- No network calls to storage or database
-
-## Role Behaviors Verified
-
-- **Tenant**: Photo upload encouraged (up to 5), helpful tips
-- **Manager**: Optional context photos (up to 3)
-- **Tech**: Required Before/During/After photos for status progression
-- **Gallery**: Photos grouped by kind with count badges
-- **Lightbox**: Full keyboard navigation, photo details
-
-## Status Gating Logic
-
-- “Start Work” disabled until Before photos exist
-- “Complete” disabled until During AND After photos exist
-- Clear visual indicators for requirements (✅/⏳)
-- Helpful tooltip messages for disabled buttons
-
-## Accessibility Features
-
-- All buttons keyboard accessible
-- Focus states on interactive elements
-- ARIA labels for screen readers
-- Lightbox supports arrow key navigation
-- Alt text for images includes photo kind and timestamp
-
-## UI Polish
-
-- Drag/drop upload zones with visual feedback
-- Upload progress bars and retry capabilities
-- Empty states with helpful messaging
-- Responsive grid layouts
-- Smooth hover transitions
-- Professional color scheme and typography
-
-## Safety Measures
-
-- No database schema changes
-- No actual file storage integration
-- No modification of existing API routes
-- Feature flagged for instant rollback
-- All data remains in browser memory only
-
-## Screenshots Needed (Manual)
-
-1. Tenant create form with photo banner and uploader
-1. Photo gallery with grouped sections
-1. Tech panel showing disabled/enabled status buttons
-1. Lightbox viewer with navigation
-1. Role switching demonstration
-
-## Performance Notes
-
-- Images compressed client-side (simulated)
-- Lazy loading for photo thumbnails
-- Minimal re-renders with proper React keys
-- CSS optimized for smooth animations
-
-Status: ✅ READY FOR DEMO
-“@
-
-$evidence | Out-File “docs/verification/photos-ui-demo.md” -Encoding UTF8
-
-# Machine-readable evidence
-
-$evidenceJSON = @{
-timestamp = (Get-Date).ToString(“o”)
-feature_flag = “FEATURE_DEMO_PHOTOS_UI=true”
-components = @{
-PhotoUploader = $true
-PhotoGallery = $true
-RolePhotoPanel = $true
-Lightbox = $true
-mockPhotoService = $true
-DemoPage = $true
-CSS = $true
-}
-photo_counts = @{
-wo_demo_1 = @{
-before = 1
-during = 0
-after = 0
-tenant = 1
-manager = 0
-}
-}
-role_behaviors = @{
-tenant = @{
-max_files = 5
-encouraged = $true
-required = $false
-}
-manager = @{
-max_files = 3
-encouraged = $false
-required = $false
-}
-tech = @{
-max_files = 3
-before_required = $true
-during_required = $true
-after_required = $true
-}
-}
-safety_checks = @{
-no_database_changes = $true
-no_storage_integration = $true
-feature_flagged = $true
-memory_only = $true
-rollback_available = $true
-}
-}
-
-$evidenceJSON | ConvertTo-Json -Depth 4 | Out-File “docs/verification/photos-ui-demo.json” -Encoding UTF8
-
-# Git commit
-
-git add -A
-$commitMsg = “feat(hr-web): photo-first maintenance UI with mock services
-
-- Add PhotoUploader with drag/drop, progress, camera support
-- Build PhotoGallery with grouped sections and lightbox viewer
-- Create RolePhotoPanel with tech status gating logic
-- Include comprehensive styling and accessibility features
-- Feature flagged behind FEATURE_DEMO_PHOTOS_UI=true
-- All data mocked in-memory, no backend dependencies
-- Demo page at /demo/work-orders/:id/photos”
-
-git commit -m $commitMsg 2>$null | Out-Null
-
-# Summary
-
-$summary = @”
-
-=== PHOTO-FIRST UI DEMO COMPLETE ===
-
-✅ Core Components Built:
-
-- PhotoUploader (drag/drop, camera, progress)
-- PhotoGallery (grouped, lightbox, keyboard nav)
-- RolePhotoPanel (tenant/manager/tech workflows)
-- Lightbox (arrows, esc, accessibility)
-
-✅ Mock Services:
-
-- In-memory photo storage
-- Simulated upload delays/progress
-- Seeded with placeholder data
-- No network calls whatsoever
-
-✅ Role Workflows:
-
-- Tenant: Encouraged uploads (5 max)
-- Manager: Optional context photos (3 max)
-- Tech: Required Before/During/After for status progression
-
-✅ UI Polish:
-
-- Responsive design + mobile camera support
-- Empty states with helpful messaging
-- Accessibility (keyboard nav, ARIA, focus states)
-- Professional styling with smooth animations
-
-✅ Safety Measures:
-
-- Feature flag: FEATURE_DEMO_PHOTOS_UI=true
-- No database/storage/API changes
-- Instant rollback capability
-- Memory-only data storage
-
-✅ Evidence Generated:
-
-- docs/demo/photos-walkthrough.md (60-sec demo script)
-- docs/verification/photos-ui-demo.md (comprehensive evidence)
-- docs/verification/photos-ui-demo.json (machine-readable)
-
-✅ Branch: feature/photo-ui-demo
-
-DEMO READY:
-
-1. Start web app: npm run dev:web
-1. Navigate to: http://localhost:3000/demo/work-orders/wo-demo-1/photos
-1. Follow 60-second walkthrough script
-1. Switch roles to see different workflows
-1. Test photo uploads, gallery, lightbox
-
-ROLLBACK (if needed):
-Set FEATURE_DEMO_PHOTOS_UI=false in apps/hr-web/.env
-
-🎉 Photo-first maintenance experience ready for keynote demo!
-“@
-
-Write-Host $summary -ForegroundColor Green
-
-Write-Host “`n=== DEMO URLS ===” -ForegroundColor Cyan
-Write-Host “Photo Demo: http://localhost:3000/demo/work-orders/wo-demo-1/photos” -ForegroundColor Yellow
-Write-Host “Evidence: docs/verification/photos-ui-demo.md” -ForegroundColor Gray
-Write-Host “Walkthrough: docs/demo/photos-walkthrough.md” -ForegroundColor Gray
+  $masked | Set-Content -LiteralPath $Dst -NoNewline
+}
+
+function Mask-JsonSecrets {
+  param([string]$Src, [string]$Dst)
+  try {
+    $obj = Get-Content -LiteralPath $Src -Raw | ConvertFrom-Json
+  } catch {
+    # Fallback: naive masking of common fields
+    (Get-Content -LiteralPath $Src -Raw) `
+      -replace '"private_key"\s*:\s*".*?"','"private_key":"***REDACTED***"' `
+      -replace '"client_email"\s*:\s*".*?"','"client_email":"***REDACTED***"' `
+      -replace '"private_key_id"\s*:\s*".*?"','"private_key_id":"***REDACTED***"' `
+      | Set-Content -LiteralPath $Dst -NoNewline
+    return
+  }
+  $fieldsToMask = @("private_key","client_email","private_key_id","client_id","refresh_token","api_key","token")
+  foreach ($k in $fieldsToMask) { if ($obj.PSObject.Properties.Name -contains $k) { $obj.$k = "***REDACTED***" } }
+  ($obj | ConvertTo-Json -Depth 20) | Set-Content -LiteralPath $Dst -NoNewline
+}
+
+Write-Host "=== Step 1: Copy ADHD repo (sources, sql, configs) ===" -ForegroundColor Cyan
+# Core project files
+$adhdDst = "$OUTDIR\adhd"
+Copy-Item package.json,package-lock.json,yarn.lock,pnpm-lock.yaml -Destination $adhdDst -ErrorAction SilentlyContinue
+Copy-Item README* -Destination $adhdDst -ErrorAction SilentlyContinue
+Copy-Item Dockerfile*,docker-compose*.yml -Destination $adhdDst -ErrorAction SilentlyContinue
+# Trees
+foreach ($dir in @("src","scripts","sql","config","data")) {
+  if (Test-Path $dir) { Copy-TreeSafe -Src (Resolve-Path $dir) -Dst (Join-Path $adhdDst $dir) }
+}
+# Exclude sqlite binaries
+Get-ChildItem -Path "$adhdDst\data" -Filter *.sqlite -Recurse -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+
+# .env handling
+if (Test-Path ".env.example") { Copy-Item ".env.example" -Destination "$adhdDst\.env.example" }
+if (Test-Path ".env") { Mask-EnvFile -Src ".env" -Dst "$adhdDst\.env.redacted" }
+
+# Firebase / service JSON (mask)
+Get-ChildItem -Recurse -Include "*service*.json","*firebase*.json","*credentials*.json" -ErrorAction SilentlyContinue | ForEach-Object {
+  $rel = $_.FullName.Substring($ROOT.Length).TrimStart('\','/')
+  $dst = Join-Path $adhdDst ("redacted_" + ($rel -replace '[\\/:]','_'))
+  Mask-JsonSecrets -Src $_.FullName -Dst $dst
+}
+
+Write-Host "=== Step 2: Collect Platform SQL / RLS / Audit ===" -ForegroundColor Cyan
+function Copy-PlatformFrom {
+  param([string]$Base)
+  if (-not (Test-Path $Base)) { return }
+  # Likely locations
+  foreach ($dir in @("sql","db","database","migrations","policies","rls","audit")) {
+    $p = Join-Path $Base $dir
+    if (Test-Path $p) { Copy-TreeSafe -Src (Resolve-Path $p) -Dst (Join-Path "$OUTDIR\platform" $dir) }
+  }
+  # Compose/Docker + READMEs
+  Copy-Item (Join-Path $Base "Dockerfile*") -Destination "$OUTDIR\platform" -ErrorAction SilentlyContinue
+  Copy-Item (Join-Path $Base "docker-compose*.yml") -Destination "$OUTDIR\platform" -ErrorAction SilentlyContinue
+  Get-ChildItem -Path $Base -Filter "README*" -File -ErrorAction SilentlyContinue | Copy-Item -Destination "$OUTDIR\platform"
+}
+
+if ($PLATFORM_DIR) {
+  Write-Host "Using PLATFORM_DIR=$PLATFORM_DIR" -ForegroundColor Yellow
+  Copy-PlatformFrom -Base $PLATFORM_DIR
+} else {
+  Write-Host "No PLATFORM_DIR provided. Attempting autodetect in parent folders..." -ForegroundColor Yellow
+  $candidates = Get-ChildItem .. -Directory -ErrorAction SilentlyContinue |
+    Where-Object { Test-Path (Join-Path $_.FullName "sql") -or Test-Path (Join-Path $_.FullName "db") }
+  foreach ($cand in $candidates) { Copy-PlatformFrom -Base $cand.FullName }
+}
+
+Write-Host "=== Step 3: Docs & Evidence (optional) ===" -ForegroundColor Cyan
+# Session logs / proofs if present
+foreach ($f in @("SESSION_LOG_EXTRACT.md","COMPREHENSIVE_FIX_PROOF.md","DEPLOY_CHECKS.md","security-proof.md","whoami.md","proof-pack.md")) {
+  if (Test-Path $f) { Copy-Item $f -Destination "$OUTDIR\docs" -ErrorAction SilentlyContinue }
+}
+
+Write-Host "=== Step 4: Create ZIP on Desktop ===" -ForegroundColor Cyan
+if (Test-Path $OUTZIP) { Remove-Item $OUTZIP -Force }
+Compress-Archive -Path "$OUTDIR\*" -DestinationPath $OUTZIP -Force
+
+Write-Host ""
+Write-Host "✅ Export complete:" -ForegroundColor Green
+Write-Host "ZIP: $OUTZIP"
+Write-Host "Temp export folder (safe to delete): $OUTDIR"
+How to run:
+Open PowerShell in your ADHD repo root.
+
+
+If your platform SQL/RLS lives elsewhere, set the variable for this session:
+
+
+$env:PLATFORM_DIR="C:\path\to\your\platform-repo"
+Run:
+
+
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\CCC-EXPORT-PLATFORM-ADHD.ps1
+
+Option B — Bash (macOS/Linux/Raspberry Pi) — Fully AI-Executable
+#!/usr/bin/env bash
+# === ccc-export-platform-adhd.sh ===
+set -euo pipefail
+
+# 0) Config — set PLATFORM_DIR if shared platform SQL/RLS elsewhere
+ROOT="$(pwd)"
+PLATFORM_DIR="${PLATFORM_DIR:-}"
+timestamp="$(date +%Y%m%d_%H%M%S)"
+exportName="adhd_platform_export_${timestamp}"
+TMP="${TMPDIR:-/tmp}/${exportName}"
+OUTDIR="$TMP"
+OUTZIP="$HOME/Desktop/adhd_platform_bundle_${timestamp}.zip"
+
+rm -rf "$OUTDIR" && mkdir -p "$OUTDIR/adhd" "$OUTDIR/platform" "$OUTDIR/docs"
+
+copy_tree_safe () {
+  src="$1"; dst="$2"
+  rsync -a "$src"/ "$dst"/ \
+    --exclude node_modules --exclude .git --exclude dist --exclude build \
+    --exclude .next --exclude .cache --exclude coverage --exclude '*.sqlite' --exclude '.DS_Store' || true
+}
+
+mask_env () {
+  src="$1"; dst="$2"
+  awk '{
+    if ($0 ~ /^[ \t]*[A-Za-z_][A-Za-z0-9_]*[ \t]*=/) {
+      split($0,a,"=");
+      print a[1] "=***REDACTED***"
+    } else { print $0 }
+  }' "$src" > "$dst"
+}
+
+mask_json () {
+  src="$1"; dst="$2"
+  python3 - <<'PY' "$src" "$dst" || true
+import json,sys
+src,dst=sys.argv[1],sys.argv[2]
+try:
+  with open(src,'r',encoding='utf-8') as f: data=json.load(f)
+  for k in ["private_key","client_email","private_key_id","client_id","refresh_token","api_key","token"]:
+    if k in data: data[k]="***REDACTED***"
+  with open(dst,'w',encoding='utf-8') as f: json.dump(data,f,indent=2)
+except Exception:
+  import re
+  txt=open(src,'r',encoding='utf-8').read()
+  txt=re.sub(r'"private_key"\s*:\s*".*?"','"private_key":"***REDACTED***"',txt)
+  txt=re.sub(r'"client_email"\s*:\s*".*?"','"client_email":"***REDACTED***"',txt)
+  txt=re.sub(r'"private_key_id"\s*:\s*".*?"','"private_key_id":"***REDACTED***"',txt)
+  open(dst,'w',encoding='utf-8').write(txt)
+PY
+}
+
+echo "=== Step 1: Copy ADHD repo (sources, sql, configs) ==="
+cp -f package.json "$OUTDIR/adhd/" 2>/dev/null || true
+cp -f package-lock.json yarn.lock pnpm-lock.yaml "$OUTDIR/adhd/" 2>/dev/null || true
+cp -f README* "$OUTDIR/adhd/" 2>/dev/null || true
+cp -f Dockerfile* docker-compose*.yml "$OUTDIR/adhd/" 2>/dev/null || true
+
+for d in src scripts sql config data; do
+  [ -d "$d" ] && mkdir -p "$OUTDIR/adhd/$d" && copy_tree_safe "$d" "$OUTDIR/adhd/$d"
+done
+find "$OUTDIR/adhd/data" -name '*.sqlite' -delete 2>/dev/null || true
+
+[ -f ".env.example" ] && cp -f ".env.example" "$OUTDIR/adhd/.env.example"
+[ -f ".env" ] && mask_env ".env" "$OUTDIR/adhd/.env.redacted"
+
+# Firebase / service JSON (mask)
+while IFS= read -r -d '' f; do
+  rel="${f#$ROOT/}"
+  dst="$OUTDIR/adhd/redacted_${rel//\//_}"
+  mkdir -p "$(dirname "$dst")"
+  mask_json "$f" "$dst"
+done < <(find . -type f $begin:math:text$ -iname '*service*.json' -o -iname '*firebase*.json' -o -iname '*credentials*.json' $end:math:text$ -print0)
+
+echo "=== Step 2: Collect Platform SQL / RLS / Audit ==="
+copy_platform_from () {
+  base="$1"
+  [ -d "$base" ] || return 0
+  for dir in sql db database migrations policies rls audit; do
+    [ -d "$base/$dir" ] && mkdir -p "$OUTDIR/platform/$dir" && copy_tree_safe "$base/$dir" "$OUTDIR/platform/$dir"
+  done
+  cp -f "$base"/Dockerfile* "$OUTDIR/platform/" 2>/dev/null || true
+  cp -f "$base"/docker-compose*.yml "$OUTDIR/platform/" 2>/dev/null || true
+  find "$base" -maxdepth 1 -type f -name 'README*' -exec cp -f {} "$OUTDIR/platform/" \; 2>/dev/null || true
+}
+
+if [ -n "$PLATFORM_DIR" ] && [ -d "$PLATFORM_DIR" ]; then
+  echo "Using PLATFORM_DIR=$PLATFORM_DIR"
+  copy_platform_from "$PLATFORM_DIR"
+else
+  echo "No PLATFORM_DIR provided. Attempting autodetect in parent folders..."
+  for cand in ../* ../*/*; do
+    [ -d "$cand" ] || continue
+    [ -d "$cand/sql" ] || [ -d "$cand/db" ] || continue
+    copy_platform_from "$cand"
+  done
+fi
+
+echo "=== Step 3: Docs & Evidence (optional) ==="
+for f in SESSION_LOG_EXTRACT.md COMPREHENSIVE_FIX_PROOF.md DEPLOY_CHECKS.md security-proof.md whoami.md proof-pack.md; do
+  [ -f "$f" ] && cp -f "$f" "$OUTDIR/docs/" || true
+done
+
+echo "=== Step 4: Create ZIP on Desktop ==="
+mkdir -p "$(dirname "$OUTZIP")"
+(cd "$OUTDIR/.." && zip -qr "$OUTZIP" "$(basename "$OUTDIR")")
+
+echo
+echo "✅ Export complete"
+echo "ZIP: $OUTZIP"
+echo "Temp export folder (safe to delete): $OUTDIR"
+How to run:
+# From your ADHD repo root:
+export PLATFORM_DIR="/path/to/your/platform-repo"   # optional if autodetect works
+bash ccc-export-platform-adhd.sh
+
+What goes into the ZIP
+ADHD bot: package.json, lockfiles, src/, scripts/, sql/, config/, data/ (but no .sqlite files), Dockerfile*, docker-compose*.yml, README*, .env.example, and .env.redacted.
+
+
+Platform: sql/, db/, database/, migrations/, policies/, rls/, audit/ plus platform Docker/Compose and READMEs (from PLATFORM_DIR or autodetected siblings).
+
+
+Docs/Evidence: session logs, fix proofs, deploy checks (if present).
+
+
+Security note: The scripts never move your originals. Redaction happens on copies only.

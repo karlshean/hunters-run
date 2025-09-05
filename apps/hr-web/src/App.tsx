@@ -11,6 +11,7 @@ function App() {
       <Routes>
         <Route path="/work-orders" element={<WorkOrdersList />} />
         <Route path="/demo/photos" element={<DemoWorkOrderPhotos />} />
+        <Route path="/demo/work-orders/:workOrderId/photos" element={<DemoWorkOrderPhotos />} />
         <Route path="/demo/social" element={<SocialMediaDemo />} />
         <Route path="/" element={<Navigate to="/work-orders" replace />} />
       </Routes>

@@ -1,0 +1,15 @@
+﻿{
+    "postinstall":  "npm -ws run postinstall --if-present \u0026\u0026 husky",
+    "build":  "npm -ws run build --if-present",
+    "dev:hr":  "npm --workspace @hunters-run/api run start:dev",
+    "migrate":  "npm --workspace @hunters-run/db run migrate",
+    "docker:up":  "docker compose up -d",
+    "docker:down":  "docker compose down",
+    "lint":  "npm -ws run lint --if-present",
+    "test":  "npm -ws run test --if-present",
+    "format":  "prettier --write \"**/*.{js,ts,json,md,yaml,yml}\"",
+    "format:check":  "prettier --check \"**/*.{js,ts,json,md,yaml,yml}\"",
+    "lint:fix":  "npm -ws run lint:fix --if-present",
+    "precommit":  "lint-staged",
+    "prepare":  "husky"
+}

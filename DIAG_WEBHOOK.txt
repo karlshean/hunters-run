@@ -1,0 +1,3 @@
+﻿# Telegram webhook (fill in; redact token)
+# Example:
+# https://api.telegram.org/bot<REDACTED>/setWebhook -> https://<your-project>.supabase.co/functions/v1/telegram-webhook
