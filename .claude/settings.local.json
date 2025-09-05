@@ -43,7 +43,9 @@
       "Bash(git remote add:*)",
       "Bash(then git add -A)",
       "Bash(else echo \"(nothing to commit)\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(git push:*)",
+      "Bash(tar:*)"
     ],
     "deny": [],
     "ask": []

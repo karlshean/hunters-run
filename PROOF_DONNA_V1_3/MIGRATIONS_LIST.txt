@@ -1,0 +1,8 @@
+== MIGRATIONS_LIST.txt ==
+mb_001_core.sql
+mb_002_functions.sql
+mb_003_seed.sql
+mb_004_triggers.sql
+mb_005_policy.sql
+
+NOTE: It is OK if mb_005_policy.sql is absent; this report is just inventory.

@@ -1,0 +1,22 @@
+== policy engine ==
+apps/hr-api/src/policy/policy.engine.ts:6:export class PolicyEngine {
+
+== decideEvidenceMode ==
+apps/hr-api/src/policy/policy.engine.ts:70:  async decideEvidenceMode(personId: string): Promise<'encourage'|'require'> {
+apps/hr-api/src/workers/due-checkin.worker.ts:90:      const evidenceMode = await this.policy.decideEvidenceMode(commitment.person_id);
+
+== decideTone ==
+apps/hr-api/src/policy/policy.engine.ts:13:  async decideTone(
+apps/hr-api/src/workers/due-checkin.worker.ts:91:      const tone = await this.policy.decideTone(
+apps/hr-api/src/workers/weekly-digest.worker.ts:94:      const closingTone = await this.policy.decideTone(
+
+== enabledDepartments ==
+apps/hr-api/src/policy/policy.engine.ts:49:  async enabledDepartments(managerId: string): Promise<Record<DeptKey, boolean>> {
+apps/hr-api/src/telegram/admin-intents.ts:152:    const depts = await policy.enabledDepartments(managerId);
+apps/hr-api/src/telegram/telegram.controller.ts:165:    const depts = await this.policy.enabledDepartments(managerId);
+apps/hr-api/src/workers/weekly-digest.worker.ts:91:      const enabledDepts = await this.policy.enabledDepartments(manager.manager_id);
+
+== admin intents ==
+apps/hr-api/src/telegram/admin-intents.ts:8:export async function maybeHandleAdminIntent(
+apps/hr-api/src/telegram/telegram.controller.ts:4:import { maybeHandleAdminIntent } from './admin-intents';
+apps/hr-api/src/telegram/telegram.controller.ts:108:    const adminResponse = await maybeHandleAdminIntent(text, manager.id, this.db, this.policy);

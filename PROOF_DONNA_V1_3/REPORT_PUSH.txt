@@ -1,0 +1,24 @@
+== REMOTES ==
+origin	https://github.com/karlshean/hunters-run (fetch)
+origin	https://github.com/karlshean/hunters-run (push)
+
+== BRANCH ==
+donna-v1.3
+
+== LAST 5 COMMITS ==
+c827b0e Donna v1.3: policy engine, migrations, webhook, workers (review branch)
+793691e Donna v1.3 – policy engine, migrations, workers, telegram webhook
+4c1931c feat(hr-web): complete social media transformation - Instagram/Snapchat/Duolingo/Venmo fusion
+48c6fd1 feat(hr-web): ultra-premium visual polish with next-level interactions
+406aed0 feat(hr-web): premium visual polish for photo-first UI demo
+
+== TRACKED FILE COUNT ==
+284
+
+== STATUS ==
+## donna-v1.3
+ M .claude/settings.local.json
+?? PROOF_DONNA_V1_3/
+
+== .env tracked? ==
+none

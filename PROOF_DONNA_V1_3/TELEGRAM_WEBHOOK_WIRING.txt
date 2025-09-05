@@ -1,0 +1,8 @@
+== webhook path ==
+apps/hr-api/src/routes/telegram.route.ts:9: * POST /api/telegram/webhook
+
+== idempotency log ==
+apps/hr-api/src/telegram/telegram.controller.ts:60:        `select id from public.messages where telegram_update_id = $1`,
+apps/hr-api/src/telegram/telegram.controller.ts:71:        insert into public.messages (telegram_update_id, telegram_message_id, telegram_chat_id, direction, content)
+apps/hr-api/src/telegram/telegram.controller.ts:333:        insert into public.messages (telegram_message_id, telegram_chat_id, direction, content)
+apps/hr-api/src/workers/outbox.worker.ts:198:        insert into public.messages (telegram_message_id, telegram_chat_id, direction, content)

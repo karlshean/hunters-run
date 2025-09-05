@@ -1,0 +1,88 @@
+== env keys referenced (grep) ==
+== env keys referenced ==
+TELEGRAM_BOT_TOKEN found in telegram controller and workers
+DATABASE_URL found in scripts and database service
+
+== .env.example ==
+﻿# Database Configuration
+DATABASE_URL=REDACTED
+MIGRATION_DATABASE_URL=REDACTED
+DB_SSL_MODE=relaxed
+
+
+
+# Firebase Configuration
+FIREBASE_PROJECT_ID=hunters-run-app-b4287
+FIREBASE_CLIENT_EMAIL="firebase-adminsdk-fbsvc@hunters-run-app-b4287.iam.gserviceaccount.com"
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCr32tznpbzC31U\nhgKD9vqvqEPM1FH3au4n8xq+qw+BFwchUxzPMHvm5BrJIDLGxc2M1KsUFcTMZS4w\n3qJzj52lw28zwdBwUmfTP0gIpTL25PeCiuIJJpqHXZsRpOFURY5hyXB8llnrsXSa\nPPpe2oFgQBtstjeWdMWn+3VpXr9F6AUTKvKcnPNfE0/7hMgxFc8qP4WuR6ppIMKe\nqCG2PlRVCp8Do3EdfE12CD5jtvbJO+L0nynWmnVfYnnlsx+KdVmsCp1zq10WGc+G\n3zUmYBybEjS3crmqarQv8OUbLt6Egv1f+mSPTDkGraHevZqC3hUJ5GUpV6a3rSum\n4x43iqtxAgMBAAECggEAGAcR9IX1QGEY0loxu9UpUqlJYTdFhjtStA8ObB1p+3gG\nrSf7XRPAHpVBEWEI+DTq+Yc5q4MnkhOLE5XsTA+F0Iiz4R51T16V2Th9j4fYyh9U\nYtGbq//Tlp0FcsAEKE3ZC96ndSNnysVyMaXYsq4FbDlKHDaVKtmEUGmdDnAKeXEt\nFI4gMWdTKda58mX1lJAWr3dEbImcymD0+FpGbBl6h0W+XcVwUjEWS8Lx+jsZ62nc\nNfZu6vsCSqqc+AfSvOmVPL2oWB8MOTQVqjiZJfYK8K14SRFvGIeBhu8xu7+5eW0z\nBdOZ4t8qSmt8PYR/hkAJ1Exi9MQWKzHdm+DTcMG9iQKBgQDx/dFLTactv3B4i/nN\nZsJFxqM8vEd9aOMKR1LZ2S8yScwShzwAWvXdK9ogqG1H0fLJamP0MFZVI79Z0/aA\nrRVU+sECfJH74fleNv6cydrq5AhyLlddSF3C6y4QL9BGEXRnKblcBZGJpvyBveex\n6TaEW7EkE6upvKBYCSnccsTf8wKBgQC10nr+qq1xiwSy21gD1CvE3G5L20+pAWv0\nGW+Ud/g0Ermc/Ch1L1iLiXX9LMGMXCkW3M7wieEtbi+gFEkIdoqY1E0YfA/QZ1zi\nPjYAgv2KfjGT27W0gvLmP1H8PBRnk1apzFacufuWr2MmeI0erI4i3GjPnCcvILbb\nKt84cqXECwKBgBLREb0xRJaiFDTLbZkzLFgQohDO8yAlT8I02ZRm9uyKIHwwV9IP\nQJ76EfQIJLc49BAFXdBXEd988BwkBz7qNoZtGSUAWrmjUKiqzhGTAJrTMHTwdYqj\nXecSMnq/vQo1wT9kVy14oWB6w5ezFJkY8UxJdPTBMs/4At/VlpO1uOlRAoGBAIvt\n+dRmfGdGyw3vOxRvRGQUFRpyJSN3QaKxtKq5jZ5dztWfRm+xSV7SIqj+udIQ11qO\nAwEhy9eP1j1Hf1FxEYc+1DqEuBL2iYhgwmSwavob1oHpdDUBFnjWwHzzq+xueyLg\nbMPfal10i0T/P/QcbqMrp8onbgyaC8AuhW5G5YYzAoGAGf2Ut5ygcvcIYDAawGvF\nWu100lHgO+MdKvzbtbEL++iYQVL3VagmV+55yjOn4Ib/Kn8zI8cBgizM6UAqYODB\nxv1VWJ/r7cAqib/vW5T4LQyXHiylPztXRdKIkjOJUlTaEsMIJwG0W2iGSuF/E0wi\neLubD1/eRykjxlv8KX/JoII=\n-----END PRIVATE KEY-----\n"
+
+# AWS Configuration
+AWS_REGION=us-east-2
+AWS_S3_BUCKET=hunters-run-photos-ks
+AWS_ACCESS_KEY_ID=AKIA2MT7XDP7LRX3SGNA
+AWS_SECRET_ACCESS_KEY=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
+
+# Feature Flags
+TENANT_PHOTO_FLOW_ENABLED=true
+
+# Supabase Keys (for reference)
+# Anon public key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzbWl5ZnFncWhlb3J3dmtva3Z4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU3MjE0MjIsImV4cCI6MjA3MTI5NzQyMn0.e7q0VJzXuZQQJ4PJ-EzWie9RX6N5ZFjgQYkPHcW9OPY
+# Service role secret: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzbWl5ZnFncWhlb3J3dmtva3Z4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NTcyMTQyMiwiZXhwIjoyMDcxMjk3NDIyfQ.Vz09Mhc-uli9SA9kl_jb_p2SffC5igj8Ij92p2WyDJ0
+
+FIREBASE_SERVICE_ACCOUNT_PATH=C:/Users/KA/myprojects3/hunters-run/secrets/firebase-admin.json
+
+TELEGRAM_BOT_TOKEN=REDACTED
+
+
+.env:28:TELEGRAM_BOT_TOKEN=7989913989:AAHRwvvnzh5iR2yM_617kM2aRRdnxS9Y36s
+.env.example:28:TELEGRAM_BOT_TOKEN=REDACTED
+adhd-bot/.env:2:TELEGRAM_BOT_TOKEN=7989913989:AAHRwvvnzh5iR2yM_617kM2aRRdnxS9Y36s
+adhd-bot/.env.example:2:TELEGRAM_BOT_TOKEN=YOUR_BOT_TOKEN_HERE
+adhd-bot/debug_snapshot_20250830_162318/bot.js:10:const token = process.env.TELEGRAM_BOT_TOKEN;
+adhd-bot/debug_snapshot_20250830_162318/bot.js:12:  error('Missing TELEGRAM_BOT_TOKEN in .env file');
+adhd-bot/dry-run-test.js:44:        success(`✅ ${envVar}: ${envVar === 'TELEGRAM_BOT_TOKEN' ? '[MASKED]' : process.env[envVar]}`);
+adhd-bot/dry-run-test.js:51:    const hasToken = process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_BOT_TOKEN !== 'YOUR_BOT_TOKEN_HERE';
+adhd-bot/dry-run-test.js:53:      success('✅ TELEGRAM_BOT_TOKEN: [SET]');
+adhd-bot/dry-run-test.js:55:      info('ℹ️ TELEGRAM_BOT_TOKEN: [PLACEHOLDER] (Bot will run in dry-run mode)');
+adhd-bot/node_modules/semantic-release/docs/extending/plugins-list.md:145:  - `verifyConditions`: Validate configuration and verify `TELEGRAM_BOT_ID` and `TELEGRAM_BOT_TOKEN`
+adhd-bot/node_modules/semantic-release/docs/extending/plugins-list.md:159:  - `verifyConditions`: Validate configuration and verify `TELEGRAM_BOT_TOKEN` and package name
+adhd-bot/README.md:29:# Edit .env and add your TELEGRAM_BOT_TOKEN
+adhd-bot/run.sh:12:    echo "⚠️  Please edit .env and add your TELEGRAM_BOT_TOKEN"
+adhd-bot/run.sh:19:    echo "❌ Please add your TELEGRAM_BOT_TOKEN to .env file"
+adhd-bot/src/bot.js:10:const token = process.env.TELEGRAM_BOT_TOKEN;
+adhd-bot/src/bot.js:12:  error('Missing TELEGRAM_BOT_TOKEN in .env file');
+adhd-bot/verify-setup.js:50:        console.log(`   ✅ Token: ${process.env.TELEGRAM_BOT_TOKEN === 'YOUR_BOT_TOKEN_HERE' ? '[PLACEHOLDER]' : '[SET]'}`);
+apps/hr-api/dist/telegram/telegram.controller.js:11:        this.botToken = process.env.TELEGRAM_BOT_TOKEN;
+apps/hr-api/dist/workers/due-checkin.worker.js:10:        this.botToken = process.env.TELEGRAM_BOT_TOKEN;
+apps/hr-api/dist/workers/outbox.worker.js:10:        this.botToken = process.env.TELEGRAM_BOT_TOKEN;
+apps/hr-api/dist/workers/outbox.worker.js:12:            throw new Error('TELEGRAM_BOT_TOKEN environment variable is required');
+apps/hr-api/src/telegram/telegram.controller.ts:48:    this.botToken = process.env.TELEGRAM_BOT_TOKEN!;
+apps/hr-api/src/workers/due-checkin.worker.ts:24:    this.botToken = process.env.TELEGRAM_BOT_TOKEN!;
+apps/hr-api/src/workers/outbox.worker.ts:22:    this.botToken = process.env.TELEGRAM_BOT_TOKEN!;
+apps/hr-api/src/workers/outbox.worker.ts:25:      throw new Error('TELEGRAM_BOT_TOKEN environment variable is required');
+create_chatgpt_zip.ps1:36:    $envContent -replace '(TELEGRAM_BOT_TOKEN|SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|SENDGRID_API_KEY|DATABASE_URL)=.*', '$1=REDACTED' | Out-File -Encoding utf8 ".env.example"
+docs/verification/verification-summary.md:55:1. Set valid `TELEGRAM_BOT_TOKEN` in `.env`
+DONNA_MB_README.md:42:TELEGRAM_BOT_TOKEN=your_bot_token
+DONNA_MB_README.md:170:1. **Environment**: Set `DATABASE_URL`, `TELEGRAM_BOT_TOKEN`
+make_prototype_zip.ps1:47:    -replace '(TELEGRAM_BOT_TOKEN|SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|SENDGRID_API_KEY|DATABASE_URL)=.*', '$1=REDACTED' `
+make_prototype_zip.ps1:54:TELEGRAM_BOT_TOKEN=REDACTED
+make_prototype_zip_final.ps1:50:    $envContent = $envContent -replace '(TELEGRAM_BOT_TOKEN|SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|SENDGRID_API_KEY|DATABASE_URL)=.*', '$1=REDACTED'
+make_prototype_zip_final.ps1:57:TELEGRAM_BOT_TOKEN=REDACTED
+make_prototype_zip_v2.ps1:49:    $envContent = $envContent -replace '(TELEGRAM_BOT_TOKEN|SUPABASE_ANON_KEY|SUPABASE_SERVICE_ROLE_KEY|OPENAI_API_KEY|ANTHROPIC_API_KEY|SENDGRID_API_KEY|DATABASE_URL)=.*', '$1=REDACTED'
+make_prototype_zip_v2.ps1:56:TELEGRAM_BOT_TOKEN=REDACTED
+node_modules/.pnpm/node_modules/@apps/hr-api/dist/telegram/telegram.controller.js:11:        this.botToken = process.env.TELEGRAM_BOT_TOKEN;
+node_modules/.pnpm/node_modules/@apps/hr-api/dist/workers/due-checkin.worker.js:10:        this.botToken = process.env.TELEGRAM_BOT_TOKEN;
+node_modules/.pnpm/node_modules/@apps/hr-api/dist/workers/outbox.worker.js:10:        this.botToken = process.env.TELEGRAM_BOT_TOKEN;
+node_modules/.pnpm/node_modules/@apps/hr-api/dist/workers/outbox.worker.js:12:            throw new Error('TELEGRAM_BOT_TOKEN environment variable is required');
+node_modules/.pnpm/node_modules/@apps/hr-api/src/telegram/telegram.controller.ts:48:    this.botToken = process.env.TELEGRAM_BOT_TOKEN!;
+node_modules/.pnpm/node_modules/@apps/hr-api/src/workers/due-checkin.worker.ts:24:    this.botToken = process.env.TELEGRAM_BOT_TOKEN!;
+node_modules/.pnpm/node_modules/@apps/hr-api/src/workers/outbox.worker.ts:22:    this.botToken = process.env.TELEGRAM_BOT_TOKEN!;
+node_modules/.pnpm/node_modules/@apps/hr-api/src/workers/outbox.worker.ts:25:      throw new Error('TELEGRAM_BOT_TOKEN environment variable is required');
+node_modules/@apps/hr-api/dist/telegram/telegram.controller.js:11:        this.botToken = process.env.TELEGRAM_BOT_TOKEN;
+node_modules/@apps/hr-api/dist/workers/due-checkin.worker.js:10:        this.botToken = process.env.TELEGRAM_BOT_TOKEN;
+node_modules/@apps/hr-api/dist/workers/outbox.worker.js:10:        this.botToken = process.env.TELEGRAM_BOT_TOKEN;
+node_modules/@apps/hr-api/dist/workers/outbox.worker.js:12:            throw new Error('TELEGRAM_BOT_TOKEN environment variable is required');
+node_modules/@apps/hr-api/src/telegram/telegram.controller.ts:48:    this.botToken = process.env.TELEGRAM_BOT_TOKEN!;
+node_modules/@apps/hr-api/src/workers/due-checkin.worker.ts:24:    this.botToken = process.env.TELEGRAM_BOT_TOKEN!;
+node_modules/@apps/hr-api/src/workers/outbox.worker.ts:22:    this.botToken = process.env.TELEGRAM_BOT_TOKEN!;
+node_modules/@apps/hr-api/src/workers/outbox.worker.ts:25:      throw new Error('TELEGRAM_BOT_TOKEN environment variable is required');

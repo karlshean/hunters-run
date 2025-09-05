@@ -1,0 +1,6 @@
+== node/npm versions ==
+v22.19.0
+10.9.3
+
+== build attempt (expected to fail if env required) ==
+NOTE: Build failures here are OK for proof; env may be required.
