@@ -1,0 +1,6 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "npm i -g pnpm && pnpm install --frozen-lockfile && pnpm -C apps/hr-api build"
+
+[deploy]
+startCommand = "node apps/hr-api/dist/main.js"
