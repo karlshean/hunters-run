@@ -1,6 +1,6 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm i -g pnpm && pnpm install --frozen-lockfile && pnpm -C apps/hr-api build"
+buildCommand = "npm i -g pnpm typescript ts-node && pnpm install"
 
 [deploy]
-startCommand = "node apps/hr-api/dist/main.js"
+startCommand = "node -r ts-node/register/transpile-only -r dotenv/config apps/hr-api/src/main.ts"
