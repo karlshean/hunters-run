@@ -75,7 +75,9 @@ async function bootstrap() {
   });
 
   // app.setGlobalPrefix("api"); // Disabled - routes already include /api
-  await app.listen(process.env.PORT || 3000);
+  const port = Number(process.env.PORT) || 3000;
+await app.listen(port, '0.0.0.0');
+console.log('HR API listening on', port);
   
   console.log(`🚀 HR API running on port ${process.env.PORT || 3000}`);
   console.log(`📚 OpenAPI docs available at http://localhost:${process.env.PORT || 3000}/api/docs`);
