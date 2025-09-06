@@ -1,12 +1,12 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "./dist",
-    "rootDir": "./src",
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": ["node", "express"],
     "moduleResolution": "Node",
-    "skipLibCheck": true,
-    "strict": false,
-    "types": ["node", "express"]
+    "noImplicitAny": false,
+    "skipLibCheck": true
   },
   "include": ["src/**/*"]
 }
