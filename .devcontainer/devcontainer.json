@@ -1,0 +1,14 @@
+{
+  "name": "Node 22 + pnpm (platform)",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:22",
+  "features": {},
+  "postCreateCommand": "bash -lc 'corepack enable && corepack prepare pnpm@9.15.9 --activate && pnpm -v'",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-typescript-next"
+      ]
+    }
+  },
+  "remoteUser": "node"
+}
