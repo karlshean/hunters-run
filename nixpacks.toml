@@ -1,0 +1,16 @@
+# nixpacks.toml (root of the repo)
+
+[phases.install]
+# Do NOT use --frozen-lockfile; let pnpm resolve & write a fresh lockfile
+cmds = [
+  "npm i -g pnpm",
+  "pnpm -w install --no-frozen-lockfile"
+]
+
+[phases.build]
+cmds = [
+  "pnpm -C apps/hr-api run build"
+]
+
+[start]
+cmd = "node apps/hr-api/dist/main.js"
