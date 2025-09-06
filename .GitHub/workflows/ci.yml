@@ -1,0 +1,57 @@
+name: CI (Type Check & Build)
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      # Give Node a bit more memory during TypeScript builds
+      NODE_OPTIONS: --max_old_space_size=4096
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: "pnpm"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Print versions (debug)
+        run: |
+          node -v
+          pnpm -v
+
+      # Install all workspace deps (no frozen lockfile so CI won’t stop on mismatch)
+      - name: Install dependencies (workspace)
+        run: pnpm -w install --no-frozen-lockfile
+
+      # Type-check & build the API; this will fail if types or deps are missing,
+      # giving you a full error list in one place.
+      - name: Build hr-api
+        working-directory: apps/hr-api
+        run: pnpm run build
+
+      # (Optional) upload compiled output so you can inspect it from the Actions run
+      - name: Upload dist artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hr-api-dist
+          path: apps/hr-api/dist
