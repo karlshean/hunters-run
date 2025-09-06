@@ -22,8 +22,6 @@
     "helmet": "^7.1.0",
     "express-rate-limit": "^7.1.0",
     "dotenv-safe": "^8.2.0",
-
-    /* --- ensure TS + types are installed in CI --- */
     "typescript": "5.9.2",
     "@types/node": "^20.12.12",
     "@types/express": "^4.17.21",
