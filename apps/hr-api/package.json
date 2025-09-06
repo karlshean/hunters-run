@@ -2,9 +2,12 @@
   "name": "@apps/hr-api",
   "version": "0.1.0",
   "scripts": {
-    "start": "node dist/main.js",
-    "start:dev": "tsc -p tsconfig.json --watch & nodemon --watch dist dist/main.js",
     "build": "tsc -p tsconfig.json",
+    "start": "node dist/main.js",
+    "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts"
+  }
+}
+
     "test": "echo \"(add tests)\" && exit 0"
   },
   "dependencies": {
