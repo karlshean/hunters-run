@@ -1,12 +1,18 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
-    "types": ["node", "express"],
-    "moduleResolution": "Node",
-    "noImplicitAny": false,
-    "skipLibCheck": true
+    "outDir": "./dist",
+    "rootDir": "./src",
+
+    "baseUrl": ".",
+    "paths": {
+      "@platform/db": ["../../packages/db/src/index.ts"],
+      "@platform/db/*": ["../../packages/db/src/*"],
+      "@platform/shared": ["../../packages/shared/src/index.ts"],
+      "@platform/shared/*": ["../../packages/shared/src/*"]
+    },
+
+    "types": ["node", "express"]
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*.ts"]
 }
