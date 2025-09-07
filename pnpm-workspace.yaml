@@ -1,5 +1,3 @@
 packages:
-  - "packages/*"
-  - "apps/*"
-  - "demo-api"
-  - "adhd-bot"
+  - 'apps/*'
+  - 'packages/*'
