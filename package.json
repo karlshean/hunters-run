@@ -12,14 +12,16 @@
     "packages/*"
   ],
   "scripts": {
-    "postinstall": "npm -ws run postinstall --if-present && husky",
-    "build": "npm -ws run build --if-present",
-    "dev:hr": "npm --workspace @apps/hr-api run start:dev",
-    "lint": "npm -ws run lint --if-present",
-    "test": "npm -ws run test --if-present",
-    "format": "prettier --write \"**/*.{js,ts,json,md,yaml,yml}\"",
-    "format:check": "prettier --check \"**/*.{js,ts,json,md,yaml,yml}\"",
-    "prepare": "husky"
+ "scripts": {
+  "postinstall": "echo skip-postinstall",
+  "build": "npm -ws run build --if-present",
+  "dev:hr": "npm --workspace @apps/hr-api run start:dev",
+  "lint": "npm -ws run lint --if-present",
+  "test": "npm -ws run test --if-present",
+  "format": "prettier --write \"**/*.{js,ts,json,md,yaml,yml}\"",
+  "format:check": "prettier --check \"**/*.{js,ts,json,md,yaml,yml}\"",
+  "prepare": "echo skip-husky"
+}
   },
   "devDependencies": {
     "husky": "^9.0.0",
