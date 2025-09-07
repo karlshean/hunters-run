@@ -1,0 +1,7 @@
+{
+  "name": "@platform/db",
+  "version": "0.0.0",
+  "private": true,
+  "main": "src/datasource.js",
+  "types": "src/datasource.d.ts"
+}
