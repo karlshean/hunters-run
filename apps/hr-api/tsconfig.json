@@ -1,18 +1,28 @@
 {
-  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "module": "commonjs",
+    "declaration": false,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "es2019",
+    "sourceMap": true,
     "outDir": "./dist",
-    "rootDir": "./src",
-
-    "baseUrl": ".",
+    "baseUrl": "./",
+    "rootDir": "./",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "strict": false,
+    "types": ["node"],
     "paths": {
-      "@platform/db": ["../../packages/db/src/index.ts"],
-      "@platform/db/*": ["../../packages/db/src/*"],
-      "@platform/shared": ["../../packages/shared/src/index.ts"],
-      "@platform/shared/*": ["../../packages/shared/src/*"]
-    },
-
-    "types": ["node", "express"]
+      "@platform/db": ["src/shims/platform-db/index.ts"],
+      "@platform/db/*": ["src/shims/platform-db/*"],
+      "@platform/shared": ["src/shims/platform-shared/index.ts"],
+      "@platform/shared/*": ["src/shims/platform-shared/*"]
+    }
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
 }
